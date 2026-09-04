@@ -36,6 +36,7 @@ export default function QuestoesScreen() {
   const [acertos, setAcertos] = useState('15');
   const [registros, setRegistros] = useState([]);
   const [carregando, setCarregando] = useState(false);
+  const [editandoQuestaoId, setEditandoQuestaoId] = useState(null);
 
   const [metaDiaria, setMetaDiaria] = useState('100');
   const [salvandoMeta, setSalvandoMeta] = useState(false);
@@ -44,6 +45,7 @@ export default function QuestoesScreen() {
   const [assuntoErro, setAssuntoErro] = useState('');
   const [notaErro, setNotaErro] = useState('');
   const [anotacoes, setAnotacoes] = useState([]);
+  const [editandoAnotacaoId, setEditandoAnotacaoId] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -72,7 +74,7 @@ export default function QuestoesScreen() {
     if (profile?.meta_diaria) setMetaDiaria(String(profile.meta_diaria));
   }
 
-  async function registrar() {
+  async function salvarQuestao() {
     const disc = disciplinas.find((d) => d.id === disciplinaSelecionada);
     if (!disc) {
       Alert.alert('Escolha uma disciplina', 'Cadastre uma disciplina na aba Cronograma primeiro.');
@@ -83,21 +85,64 @@ export default function QuestoesScreen() {
     if (numResolvidas <= 0) return;
 
     setCarregando(true);
-    const { error } = await supabase.from('questoes').insert({
-      user_id: session.user.id,
-      disciplina_id: disc.id,
-      disciplina_nome: disc.nome,
-      resolvidas: numResolvidas,
-      acertos: numAcertos,
-      data: hojeISO(),
-    });
+    const { error } = editandoQuestaoId
+      ? await supabase
+          .from('questoes')
+          .update({
+            disciplina_id: disc.id,
+            disciplina_nome: disc.nome,
+            resolvidas: numResolvidas,
+            acertos: numAcertos,
+          })
+          .eq('id', editandoQuestaoId)
+      : await supabase.from('questoes').insert({
+          user_id: session.user.id,
+          disciplina_id: disc.id,
+          disciplina_nome: disc.nome,
+          resolvidas: numResolvidas,
+          acertos: numAcertos,
+          data: hojeISO(),
+        });
     setCarregando(false);
 
     if (error) {
       Alert.alert('Erro', error.message);
       return;
     }
+    cancelarEdicaoQuestao();
     carregarDados();
+  }
+
+  function iniciarEdicaoQuestao(registro) {
+    setEditandoQuestaoId(registro.id);
+    setDisciplinaSelecionada(registro.disciplina_id);
+    setResolvidas(String(registro.resolvidas));
+    setAcertos(String(registro.acertos));
+  }
+
+  function cancelarEdicaoQuestao() {
+    setEditandoQuestaoId(null);
+    setResolvidas('20');
+    setAcertos('15');
+  }
+
+  function excluirQuestao(id) {
+    Alert.alert('Excluir esse registro?', 'Essa ação não pode ser desfeita.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.from('questoes').delete().eq('id', id);
+          if (error) {
+            Alert.alert('Erro', error.message);
+            return;
+          }
+          if (editandoQuestaoId === id) cancelarEdicaoQuestao();
+          carregarDados();
+        },
+      },
+    ]);
   }
 
   async function salvarMeta() {
@@ -120,24 +165,65 @@ export default function QuestoesScreen() {
     const disc = disciplinas.find((d) => d.id === disciplinaErro);
     if (!assuntoErro.trim() && !notaErro.trim()) return;
 
-    const { error } = await supabase.from('anotacoes_erro').insert({
-      user_id: session.user.id,
-      disciplina_nome: disc ? disc.nome : null,
-      assunto: assuntoErro.trim(),
-      nota: notaErro.trim(),
-      review_stage: 0,
-      proxima_revisao: hojeISO(),
-      data: hojeISO(),
-    });
+    const { error } = editandoAnotacaoId
+      ? await supabase
+          .from('anotacoes_erro')
+          .update({
+            disciplina_nome: disc ? disc.nome : null,
+            assunto: assuntoErro.trim(),
+            nota: notaErro.trim(),
+          })
+          .eq('id', editandoAnotacaoId)
+      : await supabase.from('anotacoes_erro').insert({
+          user_id: session.user.id,
+          disciplina_nome: disc ? disc.nome : null,
+          assunto: assuntoErro.trim(),
+          nota: notaErro.trim(),
+          review_stage: 0,
+          proxima_revisao: hojeISO(),
+          data: hojeISO(),
+        });
 
     if (error) {
       Alert.alert('Erro', error.message);
       return;
     }
-    setAssuntoErro('');
-    setNotaErro('');
+    cancelarEdicaoAnotacao();
     Keyboard.dismiss();
     carregarDados();
+  }
+
+  function iniciarEdicaoAnotacao(item) {
+    setEditandoAnotacaoId(item.id);
+    const disc = disciplinas.find((d) => d.nome === item.disciplina_nome);
+    setDisciplinaErro(disc ? disc.id : null);
+    setAssuntoErro(item.assunto || '');
+    setNotaErro(item.nota || '');
+  }
+
+  function cancelarEdicaoAnotacao() {
+    setEditandoAnotacaoId(null);
+    setAssuntoErro('');
+    setNotaErro('');
+  }
+
+  function excluirAnotacao(id) {
+    Alert.alert('Excluir esse registro?', 'Essa ação não pode ser desfeita.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.from('anotacoes_erro').delete().eq('id', id);
+          if (error) {
+            Alert.alert('Erro', error.message);
+            return;
+          }
+          if (editandoAnotacaoId === id) cancelarEdicaoAnotacao();
+          carregarDados();
+        },
+      },
+    ]);
   }
 
   async function marcarRevisado(item) {
@@ -163,6 +249,14 @@ export default function QuestoesScreen() {
     agregados[chave].acertos += r.acertos;
   });
   const linhasAgregadas = Object.entries(agregados);
+
+  // Registros individuais mais recentes, pra permitir editar/excluir
+  const registrosRecentes = [...registros]
+    .sort((a, b) => {
+      if (a.data !== b.data) return a.data < b.data ? 1 : -1;
+      return String(b.id).localeCompare(String(a.id));
+    })
+    .slice(0, 15);
 
   // Meta diária: soma de questões resolvidas hoje
   const resolvidasHoje = registros
@@ -214,7 +308,16 @@ export default function QuestoesScreen() {
 
         {/* Registrar questões */}
         <Cartao>
-          <Text style={styles.tituloCartao}>Registrar questões</Text>
+          <View style={styles.cabecalhoCartao}>
+            <Text style={[styles.tituloCartao, styles.tituloCartaoSemMargem]}>
+              {editandoQuestaoId ? 'Editar registro' : 'Registrar questões'}
+            </Text>
+            {editandoQuestaoId && (
+              <TouchableOpacity onPress={cancelarEdicaoQuestao} hitSlop={8}>
+                <Text style={styles.acaoCancelar}>Cancelar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.rotuloPequeno}>Disciplina</Text>
           <View style={styles.linhaChips}>
             {disciplinas.map((d) => (
@@ -254,15 +357,43 @@ export default function QuestoesScreen() {
               returnKeyType="done"
               value={acertos}
               onChangeText={setAcertos}
-              onSubmitEditing={registrar}
+              onSubmitEditing={salvarQuestao}
             />
           </View>
 
           <Botao
-            titulo={carregando ? 'Salvando...' : 'Registrar'}
-            onPress={registrar}
+            titulo={
+              carregando ? 'Salvando...' : editandoQuestaoId ? 'Salvar alterações' : 'Registrar'
+            }
+            onPress={salvarQuestao}
             disabled={carregando}
           />
+        </Cartao>
+
+        {/* Registros recentes */}
+        <Cartao>
+          <Text style={styles.tituloCartao}>Registros recentes</Text>
+          {registrosRecentes.length === 0 && (
+            <Text style={styles.vazio}>Nenhuma questão registrada ainda.</Text>
+          )}
+          {registrosRecentes.map((r) => (
+            <View key={r.id} style={styles.itemAnotacao}>
+              <Text style={styles.metaAnotacao}>
+                {dataISOParaBR(r.data)} — {r.disciplina_nome || 'Sem disciplina'}
+              </Text>
+              <Text style={styles.notaAnotacao}>
+                {r.acertos}/{r.resolvidas} acertos
+              </Text>
+              <View style={styles.linhaAcoesItem}>
+                <TouchableOpacity onPress={() => iniciarEdicaoQuestao(r)} hitSlop={8}>
+                  <Text style={styles.acaoEditar}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => excluirQuestao(r.id)} hitSlop={8}>
+                  <Text style={styles.acaoExcluir}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
         </Cartao>
 
         {/* Desempenho por matéria */}
@@ -287,7 +418,16 @@ export default function QuestoesScreen() {
 
         {/* Anotar erro */}
         <Cartao>
-          <Text style={styles.tituloCartao}>Anotar erro por assunto</Text>
+          <View style={styles.cabecalhoCartao}>
+            <Text style={[styles.tituloCartao, styles.tituloCartaoSemMargem]}>
+              {editandoAnotacaoId ? 'Editar anotação' : 'Anotar erro por assunto'}
+            </Text>
+            {editandoAnotacaoId && (
+              <TouchableOpacity onPress={cancelarEdicaoAnotacao} hitSlop={8}>
+                <Text style={styles.acaoCancelar}>Cancelar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.rotuloPequeno}>Disciplina</Text>
           <View style={styles.linhaChips}>
             {disciplinas.map((d) => (
@@ -316,7 +456,10 @@ export default function QuestoesScreen() {
             numberOfLines={3}
             inputStyle={{ minHeight: 70, textAlignVertical: 'top' }}
           />
-          <Botao titulo="Salvar anotação" onPress={salvarAnotacao} />
+          <Botao
+            titulo={editandoAnotacaoId ? 'Salvar alterações' : 'Salvar anotação'}
+            onPress={salvarAnotacao}
+          />
         </Cartao>
 
         {/* Para revisar hoje */}
@@ -332,12 +475,22 @@ export default function QuestoesScreen() {
                 {item.assunto ? ` · ${item.assunto}` : ''}
               </Text>
               {!!item.nota && <Text style={styles.notaAnotacao}>{item.nota}</Text>}
-              <Botao
-                titulo="Marquei como revisado"
-                onPress={() => marcarRevisado(item)}
-                variante="secundario"
-                style={{ marginTop: 8, alignSelf: 'flex-start' }}
-              />
+              <View style={styles.linhaAcoesItem}>
+                <Botao
+                  titulo="Marquei como revisado"
+                  onPress={() => marcarRevisado(item)}
+                  variante="secundario"
+                  style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                />
+              </View>
+              <View style={styles.linhaAcoesItem}>
+                <TouchableOpacity onPress={() => iniciarEdicaoAnotacao(item)} hitSlop={8}>
+                  <Text style={styles.acaoEditar}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => excluirAnotacao(item.id)} hitSlop={8}>
+                  <Text style={styles.acaoExcluir}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </Cartao>
@@ -354,6 +507,14 @@ export default function QuestoesScreen() {
                 {dataISOParaBR(item.proxima_revisao)}
               </Text>
               {!!item.nota && <Text style={styles.notaAnotacao}>{item.nota}</Text>}
+              <View style={styles.linhaAcoesItem}>
+                <TouchableOpacity onPress={() => iniciarEdicaoAnotacao(item)} hitSlop={8}>
+                  <Text style={styles.acaoEditar}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => excluirAnotacao(item.id)} hitSlop={8}>
+                  <Text style={styles.acaoExcluir}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </Cartao>
@@ -425,5 +586,16 @@ function criarEstilos(cores) {
     },
     metaAnotacao: { fontSize: 11, color: cores.textoFraco, marginBottom: 4 },
     notaAnotacao: { fontSize: 13, color: cores.texto },
+    cabecalhoCartao: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    tituloCartaoSemMargem: { marginBottom: 0 },
+    acaoCancelar: { fontSize: 13, color: cores.textoSecundario, fontWeight: '600' },
+    linhaAcoesItem: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    acaoEditar: { fontSize: 13, color: cores.destaque, fontWeight: '600' },
+    acaoExcluir: { fontSize: 13, color: cores.perigo, fontWeight: '600' },
   });
 }

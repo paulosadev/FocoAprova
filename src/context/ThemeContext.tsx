@@ -41,7 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const modoEfetivo: ModoEfetivo = modo === 'system' ? temaDoSistema || 'dark' : modo;
+  const modoEfetivo: ModoEfetivo = modo === 'system' ? (temaDoSistema === 'light' ? 'light' : 'dark') : modo;
   const cores = modoEfetivo === 'light' ? coresClaras : coresEscuras;
 
   return (
