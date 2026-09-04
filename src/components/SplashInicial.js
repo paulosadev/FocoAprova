@@ -1,9 +1,19 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Image, StyleSheet, Text } from 'react-native';
+import { Animated, Dimensions, Image, StyleSheet, Text } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
+
+const COR_FUNDO = '#0c131b';
+const { width: larguraTela, height: alturaTela } = Dimensions.get('window');
 
 // splash com fade enquanto checa a sessão antes de ir pro Login/Início
 export default function SplashInicial({ onTerminar }) {
   const opacidade = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // força o fundo nativo (janela/root view) a bater com o splash, senão o
+    // Android mostra a cor padrão do tema nas áreas edge-to-edge (SDK 57+)
+    SystemUI.setBackgroundColorAsync(COR_FUNDO);
+  }, []);
 
   useEffect(() => {
     const tempoMinimo = setTimeout(() => {
@@ -32,7 +42,12 @@ export default function SplashInicial({ onTerminar }) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0c131b',
+    // porcentagem + pixels absolutos (Dimensions) juntos: se o container pai
+    // não tiver altura definida no edge-to-edge, o '100%' sozinho não cobre a tela
+    width: '100%',
+    height: '100%',
+    ...(larguraTela && alturaTela ? { width: larguraTela, height: alturaTela } : null),
+    backgroundColor: COR_FUNDO,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
