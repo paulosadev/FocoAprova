@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.focoaprova.app",
+      "backgroundColor": "#0c131b",
       "adaptiveIcon": {
         "backgroundColor": "#0c131b",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -45,7 +46,8 @@
       "expo-font",
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-system-ui"
     ],
     "experiments": {
       "typedRoutes": true,

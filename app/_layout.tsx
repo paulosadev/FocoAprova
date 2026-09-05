@@ -2,11 +2,16 @@ import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ThemeProvider, useTema, type Cores } from '../src/context/ThemeContext';
 import LoginScreen from '../src/screens/LoginScreen';
 import ObjetivoScreen from '../src/screens/ObjetivoScreen';
 import SplashInicial from '../src/components/SplashInicial';
+
+// mais cedo possível (antes de qualquer render): evita o flash cinza do
+// windowBackground padrão do Android nas transições entre telas/splash
+SystemUI.setBackgroundColorAsync('#0c131b');
 
 function Conteudo() {
   const { session, profile, carregando } = useAuth();

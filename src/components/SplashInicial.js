@@ -1,19 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Image, StyleSheet, Text } from 'react-native';
-import * as SystemUI from 'expo-system-ui';
 
 const COR_FUNDO = '#0c131b';
 const { width: larguraTela, height: alturaTela } = Dimensions.get('window');
 
 // splash com fade enquanto checa a sessão antes de ir pro Login/Início
+// a cor de fundo nativa (windowBackground) é configurada em app/_layout.tsx
+// e no app.json (expo-system-ui), pra cobrir o app inteiro, não só aqui
 export default function SplashInicial({ onTerminar }) {
   const opacidade = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    // força o fundo nativo (janela/root view) a bater com o splash, senão o
-    // Android mostra a cor padrão do tema nas áreas edge-to-edge (SDK 57+)
-    SystemUI.setBackgroundColorAsync(COR_FUNDO);
-  }, []);
 
   useEffect(() => {
     const tempoMinimo = setTimeout(() => {
