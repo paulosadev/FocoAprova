@@ -34,11 +34,20 @@ function formatar(segundos) {
   return [h, m, sec].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
-// converte o texto do campo pra minutos válidos, só usado fora da digitação
+// converte o texto do campo pra número válido, só usado fora da digitação
 // (ao iniciar/reiniciar/trocar de bloco) — nunca enquanto a pessoa digita
-function paraMinutos(texto, padrao) {
+function paraNumero(texto, padrao) {
   const n = Number(texto);
-  return Number.isFinite(n) && n > 0 ? n : padrao;
+  return Number.isFinite(n) && n >= 0 ? n : padrao;
+}
+
+// corrige o texto pro máximo permitido (ex: '99' em minutos vira '59');
+// deixa vazio e valores parciais em paz, só limita quando excede
+function limitarTexto(texto, max) {
+  if (texto === '') return texto;
+  const n = Number(texto);
+  if (!Number.isFinite(n)) return texto;
+  return n > max ? String(max) : texto;
 }
 
 export default function TimerScreen() {
@@ -46,15 +55,21 @@ export default function TimerScreen() {
   const styles = criarEstilos(cores);
   const { session } = useAuth();
 
+  // cada duração pensada como horas/minutos separados (mesmo padrão do Simulado),
+  // texto puro no estado — só vira número (com padrão de segurança) fora da digitação
+  const [focoHorasTexto, setFocoHorasTexto] = useState('0');
   const [focoMinTexto, setFocoMinTexto] = useState('50');
+  const [pausaHorasTexto, setPausaHorasTexto] = useState('0');
   const [pausaMinTexto, setPausaMinTexto] = useState('10');
+  const [pausaLongaHorasTexto, setPausaLongaHorasTexto] = useState('0');
   const [pausaLongaMinTexto, setPausaLongaMinTexto] = useState('20');
   const [ciclosParaPausaLonga] = useState(4);
 
   // valores seguros (com padrão), usados só fora da digitação — nunca no value do campo
-  const focoMin = paraMinutos(focoMinTexto, 50);
-  const pausaMin = paraMinutos(pausaMinTexto, 10);
-  const pausaLongaMin = paraMinutos(pausaLongaMinTexto, 20);
+  const focoMin = paraNumero(focoHorasTexto, 0) * 60 + paraNumero(focoMinTexto, 50);
+  const pausaMin = paraNumero(pausaHorasTexto, 0) * 60 + paraNumero(pausaMinTexto, 10);
+  const pausaLongaMin =
+    paraNumero(pausaLongaHorasTexto, 0) * 60 + paraNumero(pausaLongaMinTexto, 20);
 
   const [modo, setModo] = useState('foco'); // foco | pausa | pausaLonga
   const [segundos, setSegundos] = useState(50 * 60);
@@ -71,15 +86,31 @@ export default function TimerScreen() {
   }, []);
 
   useEffect(() => {
-    if (!rodando && modo === 'foco') {
-      // só atualiza o preview com um número já válido; enquanto o campo
-      // estiver vazio/incompleto, mantém o valor atual (sem forçar padrão)
-      const minutos = Number(focoMinTexto);
-      if (Number.isFinite(minutos) && minutos > 0) {
-        setSegundos(minutos * 60);
-      }
+    // só atualiza o preview do bloco atual, e só com horas/minutos já válidos;
+    // enquanto algum campo estiver vazio/incompleto, mantém o valor atual
+    // (nunca força um padrão durante a digitação)
+    if (rodando) return;
+    const porModo = {
+      foco: [focoHorasTexto, focoMinTexto],
+      pausa: [pausaHorasTexto, pausaMinTexto],
+      pausaLonga: [pausaLongaHorasTexto, pausaLongaMinTexto],
+    };
+    const [horasTexto, minTexto] = porModo[modo];
+    const h = Number(horasTexto);
+    const m = Number(minTexto);
+    if (Number.isFinite(h) && h >= 0 && Number.isFinite(m) && m >= 0) {
+      setSegundos((h * 60 + m) * 60);
     }
-  }, [focoMinTexto, rodando, modo]);
+  }, [
+    focoHorasTexto,
+    focoMinTexto,
+    pausaHorasTexto,
+    pausaMinTexto,
+    pausaLongaHorasTexto,
+    pausaLongaMinTexto,
+    rodando,
+    modo,
+  ]);
 
   function iniciar() {
     Keyboard.dismiss();
@@ -206,36 +237,80 @@ export default function TimerScreen() {
           </Cartao>
 
           <Cartao>
-            <Text style={styles.tituloConfig}>Configurar tempos (minutos)</Text>
-            <View style={styles.linhaConfig}>
+            <Text style={styles.tituloConfig}>Configurar tempos</Text>
+
+            <Text style={styles.rotuloPequeno}>Foco</Text>
+            <View style={styles.linhaDuracao}>
               <CampoTexto
-                style={styles.campoConfig}
-                rotulo="Foco"
+                style={styles.campoDuracaoParte}
+                rotulo="Horas"
                 keyboardType="number-pad"
                 returnKeyType="done"
+                maxLength={2}
+                value={focoHorasTexto}
+                onChangeText={(v) => setFocoHorasTexto(limitarTexto(v, 23))}
+                onSubmitEditing={Keyboard.dismiss}
+              />
+              <CampoTexto
+                style={styles.campoDuracaoParte}
+                rotulo="Minutos"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                maxLength={2}
                 value={focoMinTexto}
-                onChangeText={setFocoMinTexto}
-                onSubmitEditing={Keyboard.dismiss}
-              />
-              <CampoTexto
-                style={styles.campoConfig}
-                rotulo="Pausa"
-                keyboardType="number-pad"
-                returnKeyType="done"
-                value={pausaMinTexto}
-                onChangeText={setPausaMinTexto}
-                onSubmitEditing={Keyboard.dismiss}
-              />
-              <CampoTexto
-                style={styles.campoConfig}
-                rotulo="Pausa longa"
-                keyboardType="number-pad"
-                returnKeyType="done"
-                value={pausaLongaMinTexto}
-                onChangeText={setPausaLongaMinTexto}
+                onChangeText={(v) => setFocoMinTexto(limitarTexto(v, 59))}
                 onSubmitEditing={Keyboard.dismiss}
               />
             </View>
+
+            <Text style={styles.rotuloPequeno}>Pausa</Text>
+            <View style={styles.linhaDuracao}>
+              <CampoTexto
+                style={styles.campoDuracaoParte}
+                rotulo="Horas"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                maxLength={2}
+                value={pausaHorasTexto}
+                onChangeText={(v) => setPausaHorasTexto(limitarTexto(v, 23))}
+                onSubmitEditing={Keyboard.dismiss}
+              />
+              <CampoTexto
+                style={styles.campoDuracaoParte}
+                rotulo="Minutos"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                maxLength={2}
+                value={pausaMinTexto}
+                onChangeText={(v) => setPausaMinTexto(limitarTexto(v, 59))}
+                onSubmitEditing={Keyboard.dismiss}
+              />
+            </View>
+
+            <Text style={styles.rotuloPequeno}>Pausa longa</Text>
+            <View style={styles.linhaDuracao}>
+              <CampoTexto
+                style={styles.campoDuracaoParte}
+                rotulo="Horas"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                maxLength={2}
+                value={pausaLongaHorasTexto}
+                onChangeText={(v) => setPausaLongaHorasTexto(limitarTexto(v, 23))}
+                onSubmitEditing={Keyboard.dismiss}
+              />
+              <CampoTexto
+                style={styles.campoDuracaoParte}
+                rotulo="Minutos"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                maxLength={2}
+                value={pausaLongaMinTexto}
+                onChangeText={(v) => setPausaLongaMinTexto(limitarTexto(v, 59))}
+                onSubmitEditing={Keyboard.dismiss}
+              />
+            </View>
+
             <Botao titulo="Concluído" onPress={Keyboard.dismiss} variante="secundario" />
           </Cartao>
         </KeyboardAwareScrollView>
@@ -278,7 +353,13 @@ function criarEstilos(cores) {
       letterSpacing: 0.5,
       marginBottom: 10,
     },
-    linhaConfig: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-    campoConfig: { flex: 1 },
+    rotuloPequeno: {
+      fontSize: 11,
+      color: cores.textoFraco,
+      marginBottom: 6,
+      textTransform: 'uppercase',
+    },
+    linhaDuracao: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+    campoDuracaoParte: { flex: 1 },
   });
 }
