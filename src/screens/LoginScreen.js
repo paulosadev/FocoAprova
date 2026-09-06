@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import {
+  View,
   Text,
   Image,
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ScrollView,
-  Platform,
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '../supabaseClient';
 import { useTema } from '../context/ThemeContext';
 import CampoTexto from '../components/CampoTexto';
@@ -79,15 +78,13 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.flex}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          bottomOffset={20}
         >
           <Image
             source={
@@ -152,9 +149,9 @@ export default function LoginScreen() {
               {modoCadastro ? 'Já tenho conta. Entrar' : 'Não tenho conta. Cadastrar'}
             </Text>
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

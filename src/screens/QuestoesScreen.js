@@ -1,15 +1,6 @@
 import { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  Keyboard,
-  Platform,
-} from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Keyboard } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from 'expo-router';
@@ -270,15 +261,13 @@ export default function QuestoesScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
+    <View style={styles.flex}>
+      <KeyboardAwareScrollView
         style={styles.flex}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        bottomOffset={20}
       >
         {/* Meta diária */}
         <Cartao>
@@ -518,8 +507,8 @@ export default function QuestoesScreen() {
             </View>
           ))}
         </Cartao>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
 

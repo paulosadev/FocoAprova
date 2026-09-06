@@ -4,12 +4,10 @@ import {
   Text,
   StyleSheet,
   Vibration,
-  ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
-  Platform,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -157,16 +155,14 @@ export default function TimerScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.flex}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.flex}
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          bottomOffset={20}
         >
           <Cartao style={styles.cartaoTimer}>
             <Text style={styles.rotulo}>{rotulo}</Text>
@@ -242,7 +238,7 @@ export default function TimerScreen() {
             </View>
             <Botao titulo="Concluído" onPress={Keyboard.dismiss} variante="secundario" />
           </Cartao>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
 
       <ModoFoco
@@ -253,7 +249,7 @@ export default function TimerScreen() {
         onPausar={pausar}
         onSair={() => setTelaCheia(false)}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

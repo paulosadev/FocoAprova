@@ -5,12 +5,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ScrollView,
-  Platform,
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
@@ -55,12 +53,13 @@ export default function ObjetivoScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.flex}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          bottomOffset={20}
+        >
           <Text style={styles.titulo}>O que você está estudando?</Text>
           <Text style={styles.subtitulo}>Isso ajuda a gente a entender melhor quem usa o app.</Text>
 
@@ -99,9 +98,9 @@ export default function ObjetivoScreen() {
           <TouchableOpacity onPress={pular}>
             <Text style={styles.link}>Prefiro não dizer agora</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

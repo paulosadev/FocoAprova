@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Vibration,
-  Alert,
-  Keyboard,
-  Platform,
-} from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { View, Text, TouchableOpacity, StyleSheet, Vibration, Alert, Keyboard } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +29,15 @@ function formatar(segundos) {
 function paraNumero(texto, padrao) {
   const n = Number(texto);
   return Number.isFinite(n) && n >= 0 ? n : padrao;
+}
+
+// corrige o texto pro máximo permitido (ex: '99' em minutos vira '59');
+// deixa vazio e valores parciais em paz, só limita quando excede
+function limitarTexto(texto, max) {
+  if (texto === '') return texto;
+  const n = Number(texto);
+  if (!Number.isFinite(n)) return texto;
+  return n > max ? String(max) : texto;
 }
 
 export default function SimuladoScreen() {
@@ -350,15 +349,13 @@ export default function SimuladoScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
+    <View style={styles.flex}>
+      <KeyboardAwareScrollView
         style={styles.flex}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        bottomOffset={20}
       >
         <Cartao>
           <Text style={styles.tituloCartao}>
@@ -371,14 +368,16 @@ export default function SimuladoScreen() {
               rotulo="Horas"
               keyboardType="number-pad"
               returnKeyType="done"
+              maxLength={2}
               value={duracaoHorasTexto}
               onChangeText={(v) => {
-                setDuracaoHorasTexto(v);
+                const texto = limitarTexto(v, 23);
+                setDuracaoHorasTexto(texto);
                 // só atualiza o preview quando as duas partes já são números
                 // válidos; enquanto algum campo estiver vazio/incompleto,
                 // mantém o valor atual (nunca força um padrão durante a digitação)
                 if (!rodando) {
-                  const h = Number(v);
+                  const h = Number(texto);
                   const m = Number(duracaoMinTexto);
                   if (Number.isFinite(h) && h >= 0 && Number.isFinite(m) && m >= 0) {
                     setSegundos((h * 60 + m) * 60);
@@ -392,12 +391,14 @@ export default function SimuladoScreen() {
               rotulo="Minutos"
               keyboardType="number-pad"
               returnKeyType="done"
+              maxLength={2}
               value={duracaoMinTexto}
               onChangeText={(v) => {
-                setDuracaoMinTexto(v);
+                const texto = limitarTexto(v, 59);
+                setDuracaoMinTexto(texto);
                 if (!rodando) {
                   const h = Number(duracaoHorasTexto);
-                  const m = Number(v);
+                  const m = Number(texto);
                   if (Number.isFinite(h) && h >= 0 && Number.isFinite(m) && m >= 0) {
                     setSegundos((h * 60 + m) * 60);
                   }
@@ -669,7 +670,7 @@ export default function SimuladoScreen() {
             );
           })}
         </Cartao>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <ModoFoco
         visivel={telaCheia}
@@ -678,7 +679,7 @@ export default function SimuladoScreen() {
         onPausar={pausar}
         onSair={() => setTelaCheia(false)}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

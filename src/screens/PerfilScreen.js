@@ -7,10 +7,9 @@ import {
   Alert,
   ScrollView,
   Keyboard,
-  Platform,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
@@ -107,15 +106,13 @@ export default function PerfilScreen() {
 
   if (editando) {
     return (
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <View style={styles.flex}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView
+          <KeyboardAwareScrollView
             style={styles.flex}
             contentContainerStyle={styles.container}
             keyboardShouldPersistTaps="handled"
+            bottomOffset={20}
           >
             <Text style={styles.titulo}>Editar perfil</Text>
 
@@ -193,9 +190,9 @@ export default function PerfilScreen() {
                 style={{ flex: 1 }}
               />
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+      </View>
     );
   }
 
