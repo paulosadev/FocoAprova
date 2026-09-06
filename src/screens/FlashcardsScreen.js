@@ -8,6 +8,7 @@ import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
+import ModoEstudoFlashcards from '../components/ModoEstudoFlashcards';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
 
 const INTERVALOS_REVISAO = [1, 3, 7, 14, 30];
@@ -28,6 +29,7 @@ export default function FlashcardsScreen() {
   const [cartoes, setCartoes] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
+  const [fila, setFila] = useState(null); // null = modo de estudo fechado; array = fila em andamento
 
   useFocusEffect(
     useCallback(() => {
@@ -132,6 +134,15 @@ export default function FlashcardsScreen() {
     carregarDados();
   }
 
+  function iniciarEstudo() {
+    if (paraRevisarHoje.length === 0) return;
+    setFila(paraRevisarHoje);
+  }
+
+  function fecharEstudo() {
+    setFila(null);
+  }
+
   const paraRevisarHoje = cartoes.filter(
     (c) => c.proxima_revisao && c.proxima_revisao <= hojeISO(),
   );
@@ -212,18 +223,17 @@ export default function FlashcardsScreen() {
         {/* Para revisar hoje */}
         <Cartao>
           <Text style={styles.tituloCartao}>Para revisar hoje</Text>
-          {paraRevisarHoje.length === 0 && (
+          {paraRevisarHoje.length === 0 ? (
             <Text style={styles.vazio}>Nada pendente de revisão hoje.</Text>
+          ) : (
+            <>
+              <Text style={styles.textoResumoRevisao}>
+                {paraRevisarHoje.length}{' '}
+                {paraRevisarHoje.length === 1 ? 'cartão esperando' : 'cartões esperando'} revisão.
+              </Text>
+              <Botao titulo="Estudar agora" onPress={iniciarEstudo} />
+            </>
           )}
-          {paraRevisarHoje.map((item) => (
-            <CartaoRevisao
-              key={item.id}
-              item={item}
-              styles={styles}
-              onAcertei={() => responder(item, true)}
-              onErrei={() => responder(item, false)}
-            />
-          ))}
         </Cartao>
 
         {/* Todos os cartões */}
@@ -251,40 +261,13 @@ export default function FlashcardsScreen() {
           ))}
         </Cartao>
       </KeyboardAwareScrollView>
-    </View>
-  );
-}
 
-// cartão de estudo: toca pra virar (frente -> verso), depois de virado mostra
-// os botões de acertei/errei
-function CartaoRevisao({ item, styles, onAcertei, onErrei }) {
-  const [virado, setVirado] = useState(false);
-
-  function responderEFechar(fn) {
-    fn();
-    setVirado(false);
-  }
-
-  return (
-    <View style={styles.itemAnotacao}>
-      <Text style={styles.metaAnotacao}>{item.disciplina_nome || 'Sem disciplina'}</Text>
-      <TouchableOpacity onPress={() => setVirado((v) => !v)} activeOpacity={0.7}>
-        <Text style={styles.textoCartaoRevisao}>{virado ? item.verso : item.frente}</Text>
-        <Text style={styles.dicaVirar}>
-          {virado ? 'Toque para ver a frente' : 'Toque para ver a resposta'}
-        </Text>
-      </TouchableOpacity>
-      {virado && (
-        <View style={styles.linhaAcoesItem}>
-          <Botao
-            titulo="Errei"
-            onPress={() => responderEFechar(onErrei)}
-            variante="secundario"
-            style={{ flex: 1 }}
-          />
-          <Botao titulo="Acertei" onPress={() => responderEFechar(onAcertei)} style={{ flex: 1 }} />
-        </View>
-      )}
+      <ModoEstudoFlashcards
+        visivel={fila !== null}
+        fila={fila || []}
+        onResponder={responder}
+        onFechar={fecharEstudo}
+      />
     </View>
   );
 }
@@ -331,8 +314,7 @@ function criarEstilos(cores) {
     },
     metaAnotacao: { fontSize: 11, color: cores.textoFraco, marginBottom: 4 },
     notaAnotacao: { fontSize: 13, color: cores.texto },
-    textoCartaoRevisao: { fontSize: 15, color: cores.texto, marginTop: 4, marginBottom: 4 },
-    dicaVirar: { fontSize: 11, color: cores.textoFraco, fontStyle: 'italic' },
+    textoResumoRevisao: { fontSize: 13, color: cores.textoSecundario, marginBottom: 12 },
     cabecalhoCartao: {
       flexDirection: 'row',
       justifyContent: 'space-between',
