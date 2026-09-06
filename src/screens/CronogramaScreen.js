@@ -146,7 +146,7 @@ export default function CronogramaScreen() {
               <Text style={styles.nomeMateria}>{m.nome}</Text>
               {!!ultimoAssunto[m.id] && (
                 <Text style={styles.ultimoAssunto} numberOfLines={1}>
-                  Última vez: {ultimoAssunto[m.id]}
+                  Último assunto estudado: {ultimoAssunto[m.id]}
                 </Text>
               )}
             </View>

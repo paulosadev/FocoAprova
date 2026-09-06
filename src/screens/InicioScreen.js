@@ -155,7 +155,7 @@ export default function InicioScreen() {
                 </Text>
                 {!!ultimoAssunto[m.id] && (
                   <Text style={styles.ultimoAssunto} numberOfLines={1}>
-                    Última vez: {ultimoAssunto[m.id]}
+                    Último assunto estudado: {ultimoAssunto[m.id]}
                   </Text>
                 )}
               </View>
