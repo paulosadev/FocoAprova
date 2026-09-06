@@ -7,9 +7,9 @@ import {
   ScrollView,
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from 'expo-router';

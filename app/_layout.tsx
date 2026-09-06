@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ThemeProvider, useTema, type Cores } from '../src/context/ThemeContext';
 import LoginScreen from '../src/screens/LoginScreen';
@@ -53,11 +54,13 @@ function Portao() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Portao />
-      </AuthProvider>
-    </ThemeProvider>
+    <KeyboardProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Portao />
+        </AuthProvider>
+      </ThemeProvider>
+    </KeyboardProvider>
   );
 }
 

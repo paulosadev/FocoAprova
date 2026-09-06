@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  KeyboardAvoidingView,
   ScrollView,
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { supabase } from '../supabaseClient';
 import { useTema } from '../context/ThemeContext';
 import CampoTexto from '../components/CampoTexto';

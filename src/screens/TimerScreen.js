@@ -7,9 +7,9 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';

@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  KeyboardAvoidingView,
   ScrollView,
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';

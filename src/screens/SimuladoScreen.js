@@ -8,9 +8,9 @@ import {
   Vibration,
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -34,11 +34,25 @@ function formatar(segundos) {
   return [h, m, sec].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
+// converte o texto do campo pra número válido, só usado fora da digitação
+// (ao calcular o cronômetro ou reiniciar) — nunca enquanto a pessoa digita
+function paraNumero(texto, padrao) {
+  const n = Number(texto);
+  return Number.isFinite(n) && n >= 0 ? n : padrao;
+}
+
 export default function SimuladoScreen() {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   const { session } = useAuth();
-  const [duracaoMin, setDuracaoMin] = useState('180');
+  // duração pensada como horas/minutos (padrão: 3h0min = 180 min), texto puro
+  // no estado — só vira número (com padrão de segurança) fora da digitação
+  const [duracaoHorasTexto, setDuracaoHorasTexto] = useState('3');
+  const [duracaoMinTexto, setDuracaoMinTexto] = useState('0');
+  const duracaoHoras = paraNumero(duracaoHorasTexto, 3);
+  const duracaoMinutosParte = paraNumero(duracaoMinTexto, 0);
+  const duracaoTotalMin = duracaoHoras * 60 + duracaoMinutosParte;
+
   const [segundos, setSegundos] = useState(180 * 60);
   const [rodando, setRodando] = useState(false);
   const [telaCheia, setTelaCheia] = useState(false);
@@ -146,7 +160,7 @@ export default function SimuladoScreen() {
 
   function reiniciar() {
     pausar();
-    setSegundos((Number(duracaoMin) || 180) * 60);
+    setSegundos(duracaoTotalMin * 60);
   }
 
   function adicionarMateria() {
@@ -198,7 +212,7 @@ export default function SimuladoScreen() {
         user_id: session.user.id,
         total,
         acertos: numAcertos,
-        duracao_min: Number(duracaoMin) || 0,
+        duracao_min: duracaoTotalMin,
         data: dataLocalISO(),
       })
       .select()
@@ -228,7 +242,7 @@ export default function SimuladoScreen() {
 
     await supabase.from('sessoes_estudo').insert({
       user_id: session.user.id,
-      minutos: Number(duracaoMin) || 0,
+      minutos: duracaoTotalMin,
       tipo: 'simulado',
       data: dataLocalISO(),
     });
@@ -350,25 +364,48 @@ export default function SimuladoScreen() {
           <Text style={styles.tituloCartao}>
             Cronômetro do simulado (não entra nas estatísticas de questões)
           </Text>
-          <CampoTexto
-            style={styles.campoDuracao}
-            rotulo="Duração (min)"
-            keyboardType="number-pad"
-            returnKeyType="done"
-            value={duracaoMin}
-            onChangeText={(v) => {
-              setDuracaoMin(v);
-              // só atualiza o preview com um número já válido; enquanto o
-              // campo estiver vazio/incompleto, mantém o valor atual
-              if (!rodando) {
-                const minutos = Number(v);
-                if (Number.isFinite(minutos) && minutos > 0) {
-                  setSegundos(minutos * 60);
+          <Text style={styles.rotuloPequeno}>Duração</Text>
+          <View style={styles.linhaDuracao}>
+            <CampoTexto
+              style={styles.campoDuracaoParte}
+              rotulo="Horas"
+              keyboardType="number-pad"
+              returnKeyType="done"
+              value={duracaoHorasTexto}
+              onChangeText={(v) => {
+                setDuracaoHorasTexto(v);
+                // só atualiza o preview quando as duas partes já são números
+                // válidos; enquanto algum campo estiver vazio/incompleto,
+                // mantém o valor atual (nunca força um padrão durante a digitação)
+                if (!rodando) {
+                  const h = Number(v);
+                  const m = Number(duracaoMinTexto);
+                  if (Number.isFinite(h) && h >= 0 && Number.isFinite(m) && m >= 0) {
+                    setSegundos((h * 60 + m) * 60);
+                  }
                 }
-              }
-            }}
-            onSubmitEditing={Keyboard.dismiss}
-          />
+              }}
+              onSubmitEditing={Keyboard.dismiss}
+            />
+            <CampoTexto
+              style={styles.campoDuracaoParte}
+              rotulo="Minutos"
+              keyboardType="number-pad"
+              returnKeyType="done"
+              value={duracaoMinTexto}
+              onChangeText={(v) => {
+                setDuracaoMinTexto(v);
+                if (!rodando) {
+                  const h = Number(duracaoHorasTexto);
+                  const m = Number(v);
+                  if (Number.isFinite(h) && h >= 0 && Number.isFinite(m) && m >= 0) {
+                    setSegundos((h * 60 + m) * 60);
+                  }
+                }
+              }}
+              onSubmitEditing={Keyboard.dismiss}
+            />
+          </View>
           <Text style={styles.display}>{formatar(segundos)}</Text>
           <View style={styles.controles}>
             <Botao
@@ -658,7 +695,14 @@ function criarEstilos(cores) {
       letterSpacing: 0.5,
     },
     explicacao: { fontSize: 12, color: cores.textoFraco, marginBottom: 12 },
-    campoDuracao: { width: 130 },
+    rotuloPequeno: {
+      fontSize: 11,
+      color: cores.textoFraco,
+      marginBottom: 6,
+      textTransform: 'uppercase',
+    },
+    linhaDuracao: { flexDirection: 'row', gap: 10 },
+    campoDuracaoParte: { flex: 1 },
     display: {
       fontSize: 44,
       fontWeight: '700',
