@@ -61,6 +61,16 @@ export default function DrawerLayout() {
           }}
         />
         <Drawer.Screen
+          name="flashcards"
+          options={{
+            title: 'Flashcards',
+            drawerLabel: 'Flashcards',
+            drawerIcon: ({ color, size }) => (
+              <Ionicons name="albums-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Drawer.Screen
           name="simulado"
           options={{
             title: 'Simulado',

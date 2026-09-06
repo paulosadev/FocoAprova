@@ -7,6 +7,7 @@ import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
+import ModalAssuntoEstudado from '../components/ModalAssuntoEstudado';
 import { dataLocalISO } from '../lib/data';
 
 const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -17,6 +18,8 @@ export default function CronogramaScreen() {
   const { session } = useAuth();
   const [disciplinas, setDisciplinas] = useState([]);
   const [concluidosHoje, setConcluidosHoje] = useState({});
+  const [ultimoAssunto, setUltimoAssunto] = useState({});
+  const [disciplinaModal, setDisciplinaModal] = useState(null);
   const [nomeNovo, setNomeNovo] = useState('');
   const [diaNovo, setDiaNovo] = useState(DIAS[0]);
   const [carregando, setCarregando] = useState(false);
@@ -42,6 +45,20 @@ export default function CronogramaScreen() {
     const mapa = {};
     (itens || []).forEach((item) => (mapa[item.disciplina_id] = true));
     setConcluidosHoje(mapa);
+
+    // último assunto estudado (qualquer data anterior) por disciplina, pra mostrar "onde parou"
+    const { data: ultimos } = await supabase
+      .from('checklist')
+      .select('disciplina_id, assunto_estudado, data')
+      .not('assunto_estudado', 'is', null)
+      .order('data', { ascending: false });
+
+    const mapaUltimo = {};
+    (ultimos || []).forEach((item) => {
+      if (!item.assunto_estudado || !item.assunto_estudado.trim()) return;
+      if (!mapaUltimo[item.disciplina_id]) mapaUltimo[item.disciplina_id] = item.assunto_estudado;
+    });
+    setUltimoAssunto(mapaUltimo);
   }
 
   async function adicionarDisciplina() {
@@ -73,22 +90,39 @@ export default function CronogramaScreen() {
     carregarDados();
   }
 
-  async function alternarConcluido(disciplinaId, valorAtual) {
+  function alternarConcluido(disciplinaId, valorAtual) {
     if (valorAtual) {
-      await supabase
-        .from('checklist')
-        .delete()
-        .eq('disciplina_id', disciplinaId)
-        .eq('data', hojeISO);
+      // desmarcar não pergunta nada, só desmarca normal
+      desmarcarConcluido(disciplinaId);
     } else {
-      await supabase.from('checklist').insert({
-        user_id: session.user.id,
-        disciplina_id: disciplinaId,
-        data: hojeISO,
-        concluido: true,
-      });
+      // marcar como estudado abre o modal perguntando o assunto
+      setDisciplinaModal(disciplinaId);
     }
+  }
+
+  async function desmarcarConcluido(disciplinaId) {
+    await supabase.from('checklist').delete().eq('disciplina_id', disciplinaId).eq('data', hojeISO);
     carregarDados();
+  }
+
+  async function marcarConcluido(disciplinaId, assunto) {
+    await supabase.from('checklist').insert({
+      user_id: session.user.id,
+      disciplina_id: disciplinaId,
+      data: hojeISO,
+      concluido: true,
+      assunto_estudado: assunto && assunto.trim() ? assunto.trim() : null,
+    });
+    setDisciplinaModal(null);
+    carregarDados();
+  }
+
+  function pularModal() {
+    if (disciplinaModal) marcarConcluido(disciplinaModal, null);
+  }
+
+  function salvarModal(texto) {
+    if (disciplinaModal) marcarConcluido(disciplinaModal, texto);
   }
 
   function renderDia(dia) {
@@ -108,7 +142,14 @@ export default function CronogramaScreen() {
               thumbColor={cores.superficie}
               ios_backgroundColor={cores.borda}
             />
-            <Text style={styles.nomeMateria}>{m.nome}</Text>
+            <View style={styles.colunaMateria}>
+              <Text style={styles.nomeMateria}>{m.nome}</Text>
+              {!!ultimoAssunto[m.id] && (
+                <Text style={styles.ultimoAssunto} numberOfLines={1}>
+                  Última vez: {ultimoAssunto[m.id]}
+                </Text>
+              )}
+            </View>
             <TouchableOpacity onPress={() => confirmarRemocao(m.id, m.nome)}>
               <Text style={styles.remover}>remover</Text>
             </TouchableOpacity>
@@ -119,44 +160,51 @@ export default function CronogramaScreen() {
   }
 
   return (
-    <FlatList
-      style={styles.container}
-      contentContainerStyle={{ padding: 16 }}
-      data={DIAS}
-      keyExtractor={(d) => d}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      renderItem={({ item }) => renderDia(item)}
-      ListHeaderComponent={
-        <Cartao>
-          <Text style={styles.tituloForm}>Adicionar disciplina</Text>
-          <CampoTexto
-            placeholder="Nome da disciplina"
-            value={nomeNovo}
-            onChangeText={setNomeNovo}
-          />
-          <View style={styles.linhaDias}>
-            {DIAS.map((d) => (
-              <TouchableOpacity
-                key={d}
-                style={[styles.chipDia, diaNovo === d && styles.chipDiaAtivo]}
-                onPress={() => setDiaNovo(d)}
-              >
-                <Text style={[styles.textoChip, diaNovo === d && styles.textoChipAtivo]}>
-                  {d.slice(0, 3)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Botao
-            titulo={carregando ? 'Salvando...' : 'Adicionar'}
-            onPress={adicionarDisciplina}
-            disabled={carregando}
-          />
-        </Cartao>
-      }
-      ListEmptyComponent={<Text style={styles.vazio}>Nenhuma disciplina cadastrada ainda.</Text>}
-    />
+    <>
+      <FlatList
+        style={styles.container}
+        contentContainerStyle={{ padding: 16 }}
+        data={DIAS}
+        keyExtractor={(d) => d}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        renderItem={({ item }) => renderDia(item)}
+        ListHeaderComponent={
+          <Cartao>
+            <Text style={styles.tituloForm}>Adicionar disciplina</Text>
+            <CampoTexto
+              placeholder="Nome da disciplina"
+              value={nomeNovo}
+              onChangeText={setNomeNovo}
+            />
+            <View style={styles.linhaDias}>
+              {DIAS.map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  style={[styles.chipDia, diaNovo === d && styles.chipDiaAtivo]}
+                  onPress={() => setDiaNovo(d)}
+                >
+                  <Text style={[styles.textoChip, diaNovo === d && styles.textoChipAtivo]}>
+                    {d.slice(0, 3)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Botao
+              titulo={carregando ? 'Salvando...' : 'Adicionar'}
+              onPress={adicionarDisciplina}
+              disabled={carregando}
+            />
+          </Cartao>
+        }
+        ListEmptyComponent={<Text style={styles.vazio}>Nenhuma disciplina cadastrada ainda.</Text>}
+      />
+      <ModalAssuntoEstudado
+        visivel={disciplinaModal != null}
+        onPular={pularModal}
+        onSalvar={salvarModal}
+      />
+    </>
   );
 }
 
@@ -193,7 +241,9 @@ function criarEstilos(cores) {
     },
     tituloDiaHoje: { color: cores.destaque },
     linhaMateria: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-    nomeMateria: { flex: 1, fontSize: 14, color: cores.texto },
+    colunaMateria: { flex: 1 },
+    nomeMateria: { fontSize: 14, color: cores.texto },
+    ultimoAssunto: { fontSize: 11, color: cores.textoFraco, marginTop: 2 },
     remover: { fontSize: 12, color: cores.perigo },
     vazio: { textAlign: 'center', color: cores.textoFraco, paddingVertical: 20 },
   });
