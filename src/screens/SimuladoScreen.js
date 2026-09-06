@@ -9,6 +9,7 @@ import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
+import SeletorDuracao from '../components/SeletorDuracao';
 import ModoFoco from '../components/ModoFoco';
 import { tocarAlerta } from '../lib/som';
 import { notificar } from '../lib/notificacoes';
@@ -24,33 +25,13 @@ function formatar(segundos) {
   return [h, m, sec].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
-// converte o texto do campo pra número válido, só usado fora da digitação
-// (ao calcular o cronômetro ou reiniciar) — nunca enquanto a pessoa digita
-function paraNumero(texto, padrao) {
-  const n = Number(texto);
-  return Number.isFinite(n) && n >= 0 ? n : padrao;
-}
-
-// corrige o texto pro máximo permitido (ex: '99' em minutos vira '59');
-// deixa vazio e valores parciais em paz, só limita quando excede
-function limitarTexto(texto, max) {
-  if (texto === '') return texto;
-  const n = Number(texto);
-  if (!Number.isFinite(n)) return texto;
-  return n > max ? String(max) : texto;
-}
-
 export default function SimuladoScreen() {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   const { session } = useAuth();
-  // duração pensada como horas/minutos (padrão: 3h0min = 180 min), texto puro
-  // no estado — só vira número (com padrão de segurança) fora da digitação
-  const [duracaoHorasTexto, setDuracaoHorasTexto] = useState('3');
-  const [duracaoMinTexto, setDuracaoMinTexto] = useState('0');
-  const duracaoHoras = paraNumero(duracaoHorasTexto, 3);
-  const duracaoMinutosParte = paraNumero(duracaoMinTexto, 0);
-  const duracaoTotalMin = duracaoHoras * 60 + duracaoMinutosParte;
+  // duração já guardada direto em minutos totais, escolhida pelo seletor de
+  // horário nativo (padrão: 3h00 = 180 min)
+  const [duracaoTotalMin, setDuracaoTotalMin] = useState(180);
 
   const [segundos, setSegundos] = useState(180 * 60);
   const [rodando, setRodando] = useState(false);
@@ -85,6 +66,12 @@ export default function SimuladoScreen() {
   useEffect(() => {
     return () => deactivateKeepAwake(KEEP_AWAKE_TAG);
   }, []);
+
+  useEffect(() => {
+    // atualiza o preview sempre que a duração muda, mas só enquanto não
+    // estiver rodando (senão atropelaria a contagem em andamento)
+    if (!rodando) setSegundos(duracaoTotalMin * 60);
+  }, [duracaoTotalMin, rodando]);
 
   // Mantém o detalhamento do simulado em edição sincronizado após cada recarga
   useEffect(() => {
@@ -361,52 +348,11 @@ export default function SimuladoScreen() {
           <Text style={styles.tituloCartao}>
             Cronômetro do simulado (não entra nas estatísticas de questões)
           </Text>
-          <Text style={styles.rotuloPequeno}>Duração</Text>
-          <View style={styles.linhaDuracao}>
-            <CampoTexto
-              style={styles.campoDuracaoParte}
-              rotulo="Horas"
-              keyboardType="number-pad"
-              returnKeyType="done"
-              maxLength={2}
-              value={duracaoHorasTexto}
-              onChangeText={(v) => {
-                const texto = limitarTexto(v, 23);
-                setDuracaoHorasTexto(texto);
-                // só atualiza o preview quando as duas partes já são números
-                // válidos; enquanto algum campo estiver vazio/incompleto,
-                // mantém o valor atual (nunca força um padrão durante a digitação)
-                if (!rodando) {
-                  const h = Number(texto);
-                  const m = Number(duracaoMinTexto);
-                  if (Number.isFinite(h) && h >= 0 && Number.isFinite(m) && m >= 0) {
-                    setSegundos((h * 60 + m) * 60);
-                  }
-                }
-              }}
-              onSubmitEditing={Keyboard.dismiss}
-            />
-            <CampoTexto
-              style={styles.campoDuracaoParte}
-              rotulo="Minutos"
-              keyboardType="number-pad"
-              returnKeyType="done"
-              maxLength={2}
-              value={duracaoMinTexto}
-              onChangeText={(v) => {
-                const texto = limitarTexto(v, 59);
-                setDuracaoMinTexto(texto);
-                if (!rodando) {
-                  const h = Number(duracaoHorasTexto);
-                  const m = Number(texto);
-                  if (Number.isFinite(h) && h >= 0 && Number.isFinite(m) && m >= 0) {
-                    setSegundos((h * 60 + m) * 60);
-                  }
-                }
-              }}
-              onSubmitEditing={Keyboard.dismiss}
-            />
-          </View>
+          <SeletorDuracao
+            rotulo="Duração"
+            valorMinutos={duracaoTotalMin}
+            onAlterar={setDuracaoTotalMin}
+          />
           <Text style={styles.display}>{formatar(segundos)}</Text>
           <View style={styles.controles}>
             <Botao
@@ -696,14 +642,6 @@ function criarEstilos(cores) {
       letterSpacing: 0.5,
     },
     explicacao: { fontSize: 12, color: cores.textoFraco, marginBottom: 12 },
-    rotuloPequeno: {
-      fontSize: 11,
-      color: cores.textoFraco,
-      marginBottom: 6,
-      textTransform: 'uppercase',
-    },
-    linhaDuracao: { flexDirection: 'row', gap: 10 },
-    campoDuracaoParte: { flex: 1 },
     display: {
       fontSize: 44,
       fontWeight: '700',

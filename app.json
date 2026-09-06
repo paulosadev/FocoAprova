@@ -47,7 +47,8 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-system-ui"
+      "expo-system-ui",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
