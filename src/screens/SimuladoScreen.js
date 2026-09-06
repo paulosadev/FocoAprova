@@ -338,7 +338,7 @@ export default function SimuladoScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         style={styles.flex}
@@ -358,7 +358,14 @@ export default function SimuladoScreen() {
             value={duracaoMin}
             onChangeText={(v) => {
               setDuracaoMin(v);
-              if (!rodando) setSegundos((Number(v) || 180) * 60);
+              // só atualiza o preview com um número já válido; enquanto o
+              // campo estiver vazio/incompleto, mantém o valor atual
+              if (!rodando) {
+                const minutos = Number(v);
+                if (Number.isFinite(minutos) && minutos > 0) {
+                  setSegundos(minutos * 60);
+                }
+              }
             }}
             onSubmitEditing={Keyboard.dismiss}
           />

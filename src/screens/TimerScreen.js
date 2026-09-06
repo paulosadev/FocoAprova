@@ -36,15 +36,27 @@ function formatar(segundos) {
   return [h, m, sec].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
+// converte o texto do campo pra minutos válidos, só usado fora da digitação
+// (ao iniciar/reiniciar/trocar de bloco) — nunca enquanto a pessoa digita
+function paraMinutos(texto, padrao) {
+  const n = Number(texto);
+  return Number.isFinite(n) && n > 0 ? n : padrao;
+}
+
 export default function TimerScreen() {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   const { session } = useAuth();
 
-  const [focoMin, setFocoMin] = useState(50);
-  const [pausaMin, setPausaMin] = useState(10);
-  const [pausaLongaMin, setPausaLongaMin] = useState(20);
+  const [focoMinTexto, setFocoMinTexto] = useState('50');
+  const [pausaMinTexto, setPausaMinTexto] = useState('10');
+  const [pausaLongaMinTexto, setPausaLongaMinTexto] = useState('20');
   const [ciclosParaPausaLonga] = useState(4);
+
+  // valores seguros (com padrão), usados só fora da digitação — nunca no value do campo
+  const focoMin = paraMinutos(focoMinTexto, 50);
+  const pausaMin = paraMinutos(pausaMinTexto, 10);
+  const pausaLongaMin = paraMinutos(pausaLongaMinTexto, 20);
 
   const [modo, setModo] = useState('foco'); // foco | pausa | pausaLonga
   const [segundos, setSegundos] = useState(50 * 60);
@@ -62,9 +74,14 @@ export default function TimerScreen() {
 
   useEffect(() => {
     if (!rodando && modo === 'foco') {
-      setSegundos(focoMin * 60);
+      // só atualiza o preview com um número já válido; enquanto o campo
+      // estiver vazio/incompleto, mantém o valor atual (sem forçar padrão)
+      const minutos = Number(focoMinTexto);
+      if (Number.isFinite(minutos) && minutos > 0) {
+        setSegundos(minutos * 60);
+      }
     }
-  }, [focoMin]);
+  }, [focoMinTexto, rodando, modo]);
 
   function iniciar() {
     Keyboard.dismiss();
@@ -142,7 +159,7 @@ export default function TimerScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
@@ -200,8 +217,8 @@ export default function TimerScreen() {
                 rotulo="Foco"
                 keyboardType="number-pad"
                 returnKeyType="done"
-                value={String(focoMin)}
-                onChangeText={(v) => setFocoMin(Number(v) || 1)}
+                value={focoMinTexto}
+                onChangeText={setFocoMinTexto}
                 onSubmitEditing={Keyboard.dismiss}
               />
               <CampoTexto
@@ -209,8 +226,8 @@ export default function TimerScreen() {
                 rotulo="Pausa"
                 keyboardType="number-pad"
                 returnKeyType="done"
-                value={String(pausaMin)}
-                onChangeText={(v) => setPausaMin(Number(v) || 1)}
+                value={pausaMinTexto}
+                onChangeText={setPausaMinTexto}
                 onSubmitEditing={Keyboard.dismiss}
               />
               <CampoTexto
@@ -218,8 +235,8 @@ export default function TimerScreen() {
                 rotulo="Pausa longa"
                 keyboardType="number-pad"
                 returnKeyType="done"
-                value={String(pausaLongaMin)}
-                onChangeText={(v) => setPausaLongaMin(Number(v) || 1)}
+                value={pausaLongaMinTexto}
+                onChangeText={setPausaLongaMinTexto}
                 onSubmitEditing={Keyboard.dismiss}
               />
             </View>
