@@ -39,6 +39,6 @@ export async function notificar(titulo, corpo) {
       trigger: null,
     });
   } catch (erro) {
-    console.log('Não foi possível notificar:', erro);
+    if (__DEV__) console.log('Não foi possível notificar:', erro);
   }
 }

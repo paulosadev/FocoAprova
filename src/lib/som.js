@@ -2,7 +2,7 @@ import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 // toca mesmo com o iPhone no silencioso, senão o alerta do timer passa despercebido
 setAudioModeAsync({ playsInSilentMode: true }).catch((erro) => {
-  console.log('Não foi possível configurar o modo de áudio:', erro);
+  if (__DEV__) console.log('Não foi possível configurar o modo de áudio:', erro);
 });
 
 // beep do timer: cria um player novo por chamada e libera depois
@@ -18,6 +18,6 @@ export function tocarAlerta() {
       }
     }, 3000);
   } catch (erro) {
-    console.log('Não foi possível tocar o som:', erro);
+    if (__DEV__) console.log('Não foi possível tocar o som:', erro);
   }
 }

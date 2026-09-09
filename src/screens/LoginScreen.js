@@ -52,8 +52,8 @@ export default function LoginScreen() {
       Alert.alert('Senhas diferentes', 'A senha e a confirmação precisam ser iguais.');
       return;
     }
-    if (senha.length < 6) {
-      Alert.alert('Senha curta', 'A senha precisa ter pelo menos 6 caracteres.');
+    if (senha.length < 8) {
+      Alert.alert('Senha curta', 'A senha precisa ter pelo menos 8 caracteres.');
       return;
     }
 
