@@ -60,7 +60,7 @@
     },
     "owner": "paulosa.ps",
     "runtimeVersion": {
-      "policy": "sdkVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/505bc3fa-1199-48db-bf1d-e0e28c88e9e5"
