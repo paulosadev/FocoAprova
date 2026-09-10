@@ -9,6 +9,7 @@ import Botao from '../components/Botao';
 import ModalAssuntoEstudado from '../components/ModalAssuntoEstudado';
 import { dataLocalISO, diasRestantes } from '../lib/data';
 import { fraseDoDia } from '../lib/frases';
+import { fontes } from '../theme';
 
 const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -164,7 +165,12 @@ export default function InicioScreen() {
         </Cartao>
 
         <Cartao>
-          <Text style={styles.tituloCartao}>Para revisar hoje</Text>
+          <View style={styles.linhaTituloCartao}>
+            <Text style={[styles.tituloCartao, styles.semMargem]}>Para revisar hoje</Text>
+            {anotacoesPendentes.length > 0 && (
+              <Text style={styles.contadorAmbar}>{anotacoesPendentes.length}</Text>
+            )}
+          </View>
           {anotacoesPendentes.length === 0 && (
             <Text style={styles.vazio}>Nada pendente de revisão hoje.</Text>
           )}
@@ -206,7 +212,7 @@ function criarEstilos(cores) {
   return StyleSheet.create({
     flex: { flex: 1, backgroundColor: cores.fundo },
     container: { padding: 16 },
-    saudacao: { fontSize: 20, fontWeight: '700', color: cores.texto, marginBottom: 14 },
+    saudacao: { fontFamily: fontes.display, fontSize: 22, color: cores.texto, marginBottom: 14 },
     cartaoFrase: { borderLeftWidth: 3, borderLeftColor: cores.destaque },
     textoFrase: {
       fontSize: 14,
@@ -224,8 +230,27 @@ function criarEstilos(cores) {
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
+    linhaTituloCartao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    semMargem: { marginBottom: 0 },
+    contadorAmbar: {
+      minWidth: 22,
+      textAlign: 'center',
+      overflow: 'hidden',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: cores.ambar,
+      color: cores.fundo,
+      fontSize: 12,
+      fontWeight: '700',
+    },
     cartaoContagem: { alignItems: 'center' },
-    numeroContagem: { fontSize: 40, fontWeight: '700', color: cores.destaque },
+    numeroContagem: { fontFamily: fontes.display, fontSize: 44, color: cores.destaque },
     rotuloContagem: {
       fontSize: 12,
       color: cores.textoSecundario,

@@ -5,6 +5,7 @@ import { useFocusEffect } from 'expo-router';
 import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
+import { fontes } from '../theme';
 
 function inicioDaSemana() {
   const d = new Date();
@@ -220,7 +221,7 @@ function criarEstilos(cores) {
     container: { padding: 16 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
     cardStat: { width: '47%' },
-    numeroStat: { fontSize: 24, fontWeight: '700', color: cores.destaque },
+    numeroStat: { fontFamily: fontes.display, fontSize: 25, color: cores.destaque },
     rotuloStat: {
       fontSize: 11,
       color: cores.textoSecundario,

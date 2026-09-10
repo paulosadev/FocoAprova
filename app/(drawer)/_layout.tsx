@@ -1,7 +1,11 @@
+import { TouchableOpacity } from 'react-native';
 import { Drawer } from 'expo-router/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { router, type Href } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTema } from '../../src/context/ThemeContext';
+import { fontes } from '../../src/theme';
+import ConteudoDrawer from '../../src/components/ConteudoDrawer';
 
 export default function DrawerLayout() {
   const { cores } = useTema();
@@ -9,95 +13,52 @@ export default function DrawerLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Drawer
+        drawerContent={(props) => <ConteudoDrawer {...props} />}
         screenOptions={{
           headerShown: true,
           headerStyle: { backgroundColor: cores.superficie },
           headerTintColor: cores.texto,
-          drawerStyle: { backgroundColor: cores.superficie, width: 260 },
-          drawerActiveTintColor: cores.destaque,
-          drawerInactiveTintColor: cores.textoSecundario,
-          drawerActiveBackgroundColor: cores.superficie2,
-          drawerLabelStyle: { fontSize: 15, fontWeight: '600' },
+          headerTitleStyle: { fontFamily: fontes.displaySemi, fontSize: 18 },
+          headerShadowVisible: false,
+          drawerStyle: { backgroundColor: cores.superficie, width: 296 },
         }}
       >
-        <Drawer.Screen
-          name="index"
-          options={{
-            title: 'Início',
-            drawerLabel: 'Início',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="timer"
-          options={{
-            title: 'Timer',
-            drawerLabel: 'Timer',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="timer-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="cronograma"
-          options={{
-            title: 'Cronograma',
-            drawerLabel: 'Cronograma',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="calendar-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="questoes"
-          options={{
-            title: 'Questões',
-            drawerLabel: 'Questões',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="help-circle-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="flashcards"
-          options={{
-            title: 'Flashcards',
-            drawerLabel: 'Flashcards',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="albums-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="simulado"
-          options={{
-            title: 'Simulado',
-            drawerLabel: 'Simulado',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="stopwatch-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="progresso"
-          options={{
-            title: 'Progresso',
-            drawerLabel: 'Progresso',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="stats-chart-outline" size={size} color={color} />
-            ),
-          }}
-        />
+        <Drawer.Screen name="index" options={{ title: 'Início' }} />
+        <Drawer.Screen name="timer" options={{ title: 'Timer' }} />
+        <Drawer.Screen name="cronograma" options={{ title: 'Cronograma' }} />
+        <Drawer.Screen name="questoes" options={{ title: 'Questões' }} />
+        <Drawer.Screen name="flashcards" options={{ title: 'Flashcards' }} />
+        <Drawer.Screen name="simulado" options={{ title: 'Simulado' }} />
+        <Drawer.Screen name="progresso" options={{ title: 'Progresso' }} />
         <Drawer.Screen
           name="perfil"
           options={{
             title: 'Perfil',
-            drawerLabel: 'Perfil',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="person-outline" size={size} color={color} />
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={() => router.push('/configuracoes' as Href)}
+                hitSlop={12}
+                style={{ marginRight: 16 }}
+              >
+                <Ionicons name="settings-outline" size={22} color={cores.textoSecundario} />
+              </TouchableOpacity>
             ),
+          }}
+        />
+        <Drawer.Screen
+          name="configuracoes"
+          options={{
+            title: 'Configurações',
+            headerLeft: () => (
+              <TouchableOpacity
+                onPress={() => router.back()}
+                hitSlop={12}
+                style={{ marginLeft: 16 }}
+              >
+                <Ionicons name="chevron-back" size={24} color={cores.textoSecundario} />
+              </TouchableOpacity>
+            ),
+            swipeEnabled: false,
           }}
         />
       </Drawer>

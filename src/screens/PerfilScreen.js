@@ -2,16 +2,17 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   ScrollView,
   Keyboard,
+  TouchableOpacity,
   TouchableWithoutFeedback,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
+import { fontes } from '../theme';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
@@ -25,21 +26,15 @@ const CATEGORIAS = [
   { valor: 'outro', rotulo: 'Outro' },
 ];
 
-const MODOS_TEMA = [
-  { valor: 'light', rotulo: 'Claro' },
-  { valor: 'dark', rotulo: 'Escuro' },
-  { valor: 'system', rotulo: 'Sistema' },
-];
-
 function rotuloCategoria(valor) {
   const encontrada = CATEGORIAS.find((c) => c.valor === valor);
   return encontrada ? encontrada.rotulo : null;
 }
 
 export default function PerfilScreen() {
-  const { cores, modo, setModo } = useTema();
+  const { cores } = useTema();
   const styles = criarEstilos(cores);
-  const { session, profile, atualizarPerfil, sair } = useAuth();
+  const { session, profile, atualizarPerfil } = useAuth();
   const [editando, setEditando] = useState(false);
   const [carregando, setCarregando] = useState(false);
 
@@ -198,8 +193,6 @@ export default function PerfilScreen() {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
-      <Text style={styles.titulo}>Perfil</Text>
-
       {faltam !== null && (
         <Cartao style={styles.cartaoContagem}>
           <Text style={styles.numeroContagem}>
@@ -214,23 +207,6 @@ export default function PerfilScreen() {
           </Text>
         </Cartao>
       )}
-
-      <Cartao>
-        <Text style={styles.tituloCartao}>Aparência</Text>
-        <View style={styles.linhaChips}>
-          {MODOS_TEMA.map((m) => (
-            <TouchableOpacity
-              key={m.valor}
-              style={[styles.chip, modo === m.valor && styles.chipAtivo]}
-              onPress={() => setModo(m.valor)}
-            >
-              <Text style={[styles.textoChip, modo === m.valor && styles.textoChipAtivo]}>
-                {m.rotulo}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Cartao>
 
       <Cartao>
         <Text style={styles.rotulo}>E-mail</Text>
@@ -260,7 +236,6 @@ export default function PerfilScreen() {
       </Cartao>
 
       <Botao titulo="Editar perfil" onPress={iniciarEdicao} />
-      <Botao titulo="Sair da conta" onPress={sair} variante="secundario" style={styles.botaoSair} />
     </ScrollView>
   );
 }
@@ -269,7 +244,12 @@ function criarEstilos(cores) {
   return StyleSheet.create({
     flex: { flex: 1, backgroundColor: cores.fundo },
     container: { padding: 16 },
-    titulo: { fontSize: 20, fontWeight: '700', color: cores.texto, marginBottom: 16 },
+    titulo: {
+      fontFamily: fontes.display,
+      fontSize: 20,
+      color: cores.texto,
+      marginBottom: 16,
+    },
     tituloCartao: {
       fontSize: 13,
       fontWeight: '700',
@@ -293,9 +273,12 @@ function criarEstilos(cores) {
     textoChip: { fontSize: 13, color: cores.textoSecundario },
     textoChipAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
     linhaBotoes: { flexDirection: 'row', gap: 10, marginTop: 4 },
-    botaoSair: { marginTop: 12 },
     cartaoContagem: { alignItems: 'center' },
-    numeroContagem: { fontSize: 40, fontWeight: '700', color: cores.destaque },
+    numeroContagem: {
+      fontFamily: fontes.display,
+      fontSize: 40,
+      color: cores.destaque,
+    },
     rotuloContagem: {
       fontSize: 12,
       color: cores.textoSecundario,

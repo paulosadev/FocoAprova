@@ -14,6 +14,7 @@ import ModoFoco from '../components/ModoFoco';
 import { tocarAlerta } from '../lib/som';
 import { notificar } from '../lib/notificacoes';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
+import { fontes } from '../theme';
 
 const KEEP_AWAKE_TAG = 'simulado-focoaprova';
 
@@ -643,11 +644,12 @@ function criarEstilos(cores) {
     },
     explicacao: { fontSize: 12, color: cores.textoFraco, marginBottom: 12 },
     display: {
-      fontSize: 44,
-      fontWeight: '700',
+      fontFamily: fontes.displaySemi,
+      fontSize: 46,
       color: cores.texto,
       textAlign: 'center',
       marginVertical: 14,
+      fontVariant: ['tabular-nums'],
     },
     controles: { flexDirection: 'row', gap: 10 },
     linhaCampos: { flexDirection: 'row', gap: 12 },

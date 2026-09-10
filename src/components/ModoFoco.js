@@ -1,6 +1,7 @@
 import { Modal, View, Text, StyleSheet } from 'react-native';
 import Botao from './Botao';
 import { useTema } from '../context/ThemeContext';
+import { fontes } from '../theme';
 
 // tela cheia do Timer/Simulado, só cronômetro e botões pra evitar distração
 export default function ModoFoco({ visivel, rotulo, display, pontos, onPausar, onSair }) {
@@ -61,14 +62,15 @@ function criarEstilos(cores) {
       marginBottom: 10,
     },
     display: {
-      fontSize: 64,
-      fontWeight: '700',
+      fontFamily: fontes.displaySemi,
+      fontSize: 66,
       color: cores.texto,
       marginBottom: 20,
+      fontVariant: ['tabular-nums'],
     },
     pontos: { flexDirection: 'row', gap: 10, marginBottom: 30 },
     ponto: { width: 12, height: 12, borderRadius: 6, borderWidth: 1.5, borderColor: cores.borda },
-    pontoPreenchido: { backgroundColor: cores.destaque, borderColor: cores.destaque },
+    pontoPreenchido: { backgroundColor: cores.ambar, borderColor: cores.ambar },
     controles: { flexDirection: 'row', gap: 10, width: '100%', marginBottom: 24 },
     dica: {
       position: 'absolute',

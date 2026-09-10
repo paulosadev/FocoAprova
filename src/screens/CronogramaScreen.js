@@ -131,7 +131,10 @@ export default function CronogramaScreen() {
 
     return (
       <Cartao key={dia} style={dia === hojeSemana ? styles.cartaoHoje : null}>
-        <Text style={[styles.tituloDia, dia === hojeSemana && styles.tituloDiaHoje]}>{dia}</Text>
+        <View style={styles.linhaTituloDia}>
+          <Text style={[styles.tituloDia, dia === hojeSemana && styles.tituloDiaHoje]}>{dia}</Text>
+          {dia === hojeSemana && <Text style={styles.badgeHoje}>Hoje</Text>}
+        </View>
         {materiasDoDia.map((m) => (
           <View key={m.id} style={styles.linhaMateria}>
             <Switch
@@ -231,15 +234,32 @@ function criarEstilos(cores) {
     textoChip: { fontSize: 12, color: cores.textoSecundario },
     textoChipAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
     cartaoHoje: { borderColor: cores.destaque },
+    linhaTituloDia: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 10,
+    },
     tituloDia: {
       fontSize: 13,
       fontWeight: '700',
       color: cores.textoSecundario,
       textTransform: 'uppercase',
-      marginBottom: 10,
       letterSpacing: 0.5,
     },
     tituloDiaHoje: { color: cores.destaque },
+    badgeHoje: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      color: cores.fundo,
+      backgroundColor: cores.ambar,
+      overflow: 'hidden',
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
     linhaMateria: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
     colunaMateria: { flex: 1 },
     nomeMateria: { fontSize: 14, color: cores.texto },

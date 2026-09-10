@@ -35,10 +35,29 @@ export const espacamento = {
   pequeno: 8,
   medio: 16,
   grande: 24,
+  extra: 32,
 };
 
 export const raio = {
   padrao: 10,
   pequeno: 6,
   botao: 8,
+};
+
+// Space Grotesk carregada em app/_layout.tsx — usar só em títulos e números
+// de destaque; o texto corrido segue na fonte do sistema
+export const fontes = {
+  display: 'SpaceGrotesk_700Bold',
+  displaySemi: 'SpaceGrotesk_600SemiBold',
+};
+
+// profundidade entre camadas de cards (iOS usa shadow*, Android usa elevation)
+export const sombra = {
+  cartao: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 4,
+  },
 };

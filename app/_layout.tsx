@@ -4,8 +4,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import {
+  useFonts,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from '@expo-google-fonts/space-grotesk';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ThemeProvider, useTema, type Cores } from '../src/context/ThemeContext';
+import { PreferenciasProvider } from '../src/context/PreferenciasContext';
 import LoginScreen from '../src/screens/LoginScreen';
 import ObjetivoScreen from '../src/screens/ObjetivoScreen';
 import SplashInicial from '../src/components/SplashInicial';
@@ -19,6 +25,11 @@ function Conteudo() {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
 
+  const [fontesCarregadas] = useFonts({
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+  });
+
   // splash controla o próprio tempo mínimo, evita piscar se a sessão carregar rápido demais
   const [splashTerminou, setSplashTerminou] = useState(false);
 
@@ -26,7 +37,7 @@ function Conteudo() {
     return <SplashInicial onTerminar={() => setSplashTerminou(true)} />;
   }
 
-  if (carregando) {
+  if (carregando || !fontesCarregadas) {
     return <View style={styles.carregando} />;
   }
 
@@ -56,9 +67,11 @@ export default function RootLayout() {
   return (
     <KeyboardProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <Portao />
-        </AuthProvider>
+        <PreferenciasProvider>
+          <AuthProvider>
+            <Portao />
+          </AuthProvider>
+        </PreferenciasProvider>
       </ThemeProvider>
     </KeyboardProvider>
   );

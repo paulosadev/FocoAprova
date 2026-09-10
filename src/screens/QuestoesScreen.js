@@ -453,7 +453,12 @@ export default function QuestoesScreen() {
 
         {/* Para revisar hoje */}
         <Cartao>
-          <Text style={styles.tituloCartao}>Para revisar hoje</Text>
+          <View style={styles.linhaTituloCartao}>
+            <Text style={[styles.tituloCartao, styles.semMargem]}>Para revisar hoje</Text>
+            {anotacoesPendentes.length > 0 && (
+              <Text style={styles.contadorAmbar}>{anotacoesPendentes.length}</Text>
+            )}
+          </View>
           {anotacoesPendentes.length === 0 && (
             <Text style={styles.vazio}>Nada pendente de revisão hoje.</Text>
           )}
@@ -523,6 +528,25 @@ function criarEstilos(cores) {
       marginBottom: 12,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
+    },
+    linhaTituloCartao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    semMargem: { marginBottom: 0 },
+    contadorAmbar: {
+      minWidth: 22,
+      textAlign: 'center',
+      overflow: 'hidden',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: cores.ambar,
+      color: cores.fundo,
+      fontSize: 12,
+      fontWeight: '700',
     },
     rotuloPequeno: {
       fontSize: 11,

@@ -15,6 +15,7 @@ import {
   permissaoNotificacaoConcedida,
 } from '../lib/notificacoes';
 import { dataLocalISO } from '../lib/data';
+import { fontes } from '../theme';
 
 const KEEP_AWAKE_TAG = 'timer-focoaprova';
 
@@ -213,10 +214,16 @@ function criarEstilos(cores) {
       letterSpacing: 1,
       marginBottom: 6,
     },
-    display: { fontSize: 56, fontWeight: '700', color: cores.texto, marginBottom: 14 },
+    display: {
+      fontFamily: fontes.displaySemi,
+      fontSize: 58,
+      color: cores.texto,
+      marginBottom: 14,
+      fontVariant: ['tabular-nums'],
+    },
     pontos: { flexDirection: 'row', gap: 8, marginBottom: 18 },
     ponto: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: cores.borda },
-    pontoPreenchido: { backgroundColor: cores.destaque, borderColor: cores.destaque },
+    pontoPreenchido: { backgroundColor: cores.ambar, borderColor: cores.ambar },
     controles: { flexDirection: 'row', gap: 10, width: '100%' },
     tituloConfig: {
       fontSize: 12,

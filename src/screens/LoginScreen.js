@@ -10,33 +10,58 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { supabase } from '../supabaseClient';
+import { entrarComGoogle } from '../lib/auth';
 import { useTema } from '../context/ThemeContext';
+import { fontes } from '../theme';
 import CampoTexto from '../components/CampoTexto';
 import Botao from '../components/Botao';
+import BotaoGoogle from '../components/BotaoGoogle';
 
 export default function LoginScreen() {
   const { cores, modoEfetivo } = useTema();
   const styles = criarEstilos(cores);
+
+  // 'inicio' = tela de boas-vindas; 'form' = login/cadastro
+  const [etapa, setEtapa] = useState('inicio');
+  const [modoCadastro, setModoCadastro] = useState(false);
+
   const [nome, setNome] = useState('');
   const [sobrenome, setSobrenome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
-  const [modoCadastro, setModoCadastro] = useState(false);
+  const [carregandoGoogle, setCarregandoGoogle] = useState(false);
+
+  const logo =
+    modoEfetivo === 'light'
+      ? require('../../assets/logo/logo-mark-claro.png')
+      : require('../../assets/logo/logo-mark-escuro.png');
+
+  function abrirForm(cadastro) {
+    setModoCadastro(cadastro);
+    setEtapa('form');
+  }
+
+  async function handleGoogle() {
+    setCarregandoGoogle(true);
+    try {
+      await entrarComGoogle();
+      // sessão entra pelo onAuthStateChange do AuthContext
+    } catch (erro) {
+      Alert.alert('Erro no login com Google', erro?.message ?? 'Tente novamente.');
+    } finally {
+      setCarregandoGoogle(false);
+    }
+  }
 
   async function handleLogin() {
     setCarregando(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     setCarregando(false);
-
-    if (error) {
-      Alert.alert('Erro ao entrar', error.message);
-    }
+    if (error) Alert.alert('Erro ao entrar', error.message);
   }
 
   async function handleCadastro() {
@@ -61,12 +86,7 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.signUp({
       email,
       password: senha,
-      options: {
-        data: {
-          nome: nome.trim(),
-          sobrenome: sobrenome.trim(),
-        },
-      },
+      options: { data: { nome: nome.trim(), sobrenome: sobrenome.trim() } },
     });
     setCarregando(false);
 
@@ -77,6 +97,31 @@ export default function LoginScreen() {
     }
   }
 
+  // ---------- Boas-vindas ----------
+  if (etapa === 'inicio') {
+    return (
+      <View style={styles.flexCentro}>
+        <View style={styles.miolo}>
+          <Image source={logo} style={styles.logoGrande} resizeMode="contain" />
+          <Text style={styles.marca}>FocoAprova</Text>
+          <Text style={styles.tagline}>Sua rotina de estudos, organizada num só lugar</Text>
+        </View>
+
+        <View style={styles.acoes}>
+          <BotaoGoogle onPress={handleGoogle} carregando={carregandoGoogle} />
+          <Botao titulo="Entrar" onPress={() => abrirForm(false)} style={styles.botaoGrande} />
+          <Botao
+            titulo="Cadastrar"
+            variante="secundario"
+            onPress={() => abrirForm(true)}
+            style={styles.botaoGrande}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  // ---------- Login / Cadastro ----------
   return (
     <View style={styles.flex}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -86,26 +131,43 @@ export default function LoginScreen() {
           keyboardDismissMode="on-drag"
           bottomOffset={20}
         >
-          <Image
-            source={
-              modoEfetivo === 'light'
-                ? require('../../assets/logo/logo-mark-claro.png')
-                : require('../../assets/logo/logo-mark-escuro.png')
-            }
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <TouchableOpacity
+            style={styles.voltar}
+            onPress={() => setEtapa('inicio')}
+            hitSlop={10}
+          >
+            <Ionicons name="chevron-back" size={22} color={cores.textoSecundario} />
+            <Text style={styles.voltarTexto}>Voltar</Text>
+          </TouchableOpacity>
+
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
           <Text style={styles.marca}>FocoAprova</Text>
-          <Text style={styles.subtitulo}>{modoCadastro ? 'Criar conta' : 'Entrar na conta'}</Text>
+
+          <View style={styles.abas}>
+            <TouchableOpacity
+              style={[styles.aba, !modoCadastro && styles.abaAtiva]}
+              onPress={() => setModoCadastro(false)}
+            >
+              <Text style={[styles.abaTexto, !modoCadastro && styles.abaTextoAtivo]}>Entrar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.aba, modoCadastro && styles.abaAtiva]}
+              onPress={() => setModoCadastro(true)}
+            >
+              <Text style={[styles.abaTexto, modoCadastro && styles.abaTextoAtivo]}>Cadastrar</Text>
+            </TouchableOpacity>
+          </View>
+
+          <BotaoGoogle onPress={handleGoogle} carregando={carregandoGoogle} />
+          <View style={styles.separador}>
+            <View style={styles.linha} />
+            <Text style={styles.separadorTexto}>ou</Text>
+            <View style={styles.linha} />
+          </View>
 
           {modoCadastro && (
             <>
-              <CampoTexto
-                placeholder="Nome"
-                value={nome}
-                onChangeText={setNome}
-                returnKeyType="next"
-              />
+              <CampoTexto placeholder="Nome" value={nome} onChangeText={setNome} returnKeyType="next" />
               <CampoTexto
                 placeholder="Sobrenome"
                 value={sobrenome}
@@ -123,7 +185,6 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             returnKeyType="next"
           />
-
           <CampoTexto placeholder="Senha" secureTextEntry value={senha} onChangeText={setSenha} />
 
           {modoCadastro && (
@@ -143,12 +204,6 @@ export default function LoginScreen() {
             disabled={carregando}
             style={{ marginTop: 8 }}
           />
-
-          <TouchableOpacity onPress={() => setModoCadastro(!modoCadastro)}>
-            <Text style={styles.link}>
-              {modoCadastro ? 'Já tenho conta. Entrar' : 'Não tenho conta. Cadastrar'}
-            </Text>
-          </TouchableOpacity>
         </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
     </View>
@@ -158,37 +213,56 @@ export default function LoginScreen() {
 function criarEstilos(cores) {
   return StyleSheet.create({
     flex: { flex: 1, backgroundColor: cores.fundo },
-    container: {
-      flexGrow: 1,
-      justifyContent: 'center',
-      padding: 24,
+    flexCentro: {
+      flex: 1,
       backgroundColor: cores.fundo,
+      padding: 24,
     },
-    logo: {
-      width: 184,
-      height: 184,
-      alignSelf: 'center',
-      marginBottom: 12,
-    },
+    container: { flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: cores.fundo },
+
+    miolo: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    acoes: { gap: 12, paddingBottom: 8 },
+    botaoGrande: { paddingVertical: 16 },
+
+    logoGrande: { width: 96, height: 96, marginBottom: 20 },
+    logo: { width: 72, height: 72, alignSelf: 'center', marginBottom: 10 },
     marca: {
+      fontFamily: fontes.display,
       fontSize: 30,
-      fontWeight: '700',
       textAlign: 'center',
-      marginBottom: 4,
       color: cores.texto,
-      letterSpacing: 0.5,
+      letterSpacing: 0.4,
+      marginBottom: 8,
     },
-    subtitulo: {
+    tagline: {
       fontSize: 15,
       textAlign: 'center',
       color: cores.textoSecundario,
-      marginBottom: 28,
+      lineHeight: 22,
+      maxWidth: 260,
     },
-    link: {
-      textAlign: 'center',
-      color: cores.destaque,
-      marginTop: 18,
-      fontSize: 14,
+
+    voltar: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, alignSelf: 'flex-start' },
+    voltarTexto: { color: cores.textoSecundario, fontSize: 14 },
+
+    abas: {
+      flexDirection: 'row',
+      gap: 4,
+      padding: 4,
+      backgroundColor: cores.superficie2,
+      borderWidth: 1,
+      borderColor: cores.borda,
+      borderRadius: 11,
+      marginTop: 16,
+      marginBottom: 20,
     },
+    aba: { flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 8 },
+    abaAtiva: { backgroundColor: cores.destaque },
+    abaTexto: { fontSize: 14, fontWeight: '600', color: cores.textoSecundario },
+    abaTextoAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
+
+    separador: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+    linha: { flex: 1, height: 1, backgroundColor: cores.borda },
+    separadorTexto: { color: cores.textoFraco, fontSize: 12 },
   });
 }
