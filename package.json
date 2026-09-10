@@ -54,7 +54,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
-    "eas-cli": "^23.2.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.2",
     "prettier": "3.9.6",
