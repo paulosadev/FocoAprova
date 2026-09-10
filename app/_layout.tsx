@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -25,6 +25,8 @@ function Conteudo() {
   const { session, profile, carregando } = useAuth();
   const { cores } = useTema();
   const styles = criarEstilos(cores);
+  const pathname = usePathname();
+  const naRedefinicaoDeSenha = pathname === '/redefinir-senha';
 
   // fonte é cosmética: se falhar ou demorar, seguir com a fonte do sistema
   const [fontesCarregadas, fontesErro] = useFonts({
@@ -66,12 +68,12 @@ function Conteudo() {
   return (
     <View style={styles.flex}>
       <Stack screenOptions={{ headerShown: false }} />
-      {!session && (
+      {!session && !naRedefinicaoDeSenha && (
         <View style={StyleSheet.absoluteFill}>
           <LoginScreen />
         </View>
       )}
-      {precisaObjetivo && (
+      {precisaObjetivo && !naRedefinicaoDeSenha && (
         <View style={StyleSheet.absoluteFill}>
           <ObjetivoScreen />
         </View>

@@ -8,10 +8,14 @@ WebBrowser.maybeCompleteAuthSession();
 // URI de retorno: em build standalone vira "focoaprova://" (scheme do app.json).
 // Precisa estar na lista de "Redirect URLs" do Supabase (Authentication > URL Configuration).
 export const redirectTo = makeRedirectUri();
+export const redirectRedefinirSenha = makeRedirectUri({ path: 'redefinir-senha' });
 
-if (__DEV__) console.log('[auth] redirectTo =', redirectTo);
+if (__DEV__) {
+  console.log('[auth] redirectTo =', redirectTo);
+  console.log('[auth] redirectRedefinirSenha =', redirectRedefinirSenha);
+}
 
-function extrairParametros(url) {
+export function extrairParametros(url) {
   const params = {};
   const posHash = url.indexOf('#');
   const posQuery = url.indexOf('?');
@@ -61,4 +65,12 @@ export async function entrarComGoogle() {
   }
 
   throw new Error('Não foi possível ler a resposta do Google.');
+}
+
+// Dispara o e-mail com o link de redefinição de senha.
+export async function enviarResetSenha(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: redirectRedefinirSenha,
+  });
+  if (error) throw error;
 }

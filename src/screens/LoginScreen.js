@@ -12,7 +12,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { supabase } from '../supabaseClient';
-import { entrarComGoogle } from '../lib/auth';
+import { entrarComGoogle, enviarResetSenha } from '../lib/auth';
 import { useTema } from '../context/ThemeContext';
 import { fontes } from '../theme';
 import CampoTexto from '../components/CampoTexto';
@@ -62,6 +62,22 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     setCarregando(false);
     if (error) Alert.alert('Erro ao entrar', error.message);
+  }
+
+  async function handleEsqueciSenha() {
+    if (!email.trim()) {
+      Alert.alert('Digite seu e-mail', 'Preencha o campo de e-mail acima e toque de novo.');
+      return;
+    }
+    try {
+      await enviarResetSenha(email);
+      Alert.alert(
+        'E-mail enviado',
+        'Se existir uma conta com esse e-mail, você vai receber um link para redefinir a senha.',
+      );
+    } catch (erro) {
+      Alert.alert('Não foi possível enviar', erro?.message ?? 'Tente de novo em instantes.');
+    }
   }
 
   async function handleCadastro() {
@@ -183,6 +199,7 @@ export default function LoginScreen() {
 
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <Text style={styles.marca}>FocoAprova</Text>
+          <Text style={styles.tagline}>Sua rotina de estudos, organizada num só lugar</Text>
 
           <View style={styles.abas}>
             <TouchableOpacity
@@ -201,9 +218,16 @@ export default function LoginScreen() {
 
           {modoCadastro && (
             <>
-              <CampoTexto placeholder="Nome" value={nome} onChangeText={setNome} returnKeyType="next" />
               <CampoTexto
-                placeholder="Sobrenome"
+                rotulo="Nome"
+                placeholder="Seu nome"
+                value={nome}
+                onChangeText={setNome}
+                returnKeyType="next"
+              />
+              <CampoTexto
+                rotulo="Sobrenome"
+                placeholder="Seu sobrenome"
                 value={sobrenome}
                 onChangeText={setSobrenome}
                 returnKeyType="next"
@@ -212,24 +236,38 @@ export default function LoginScreen() {
           )}
 
           <CampoTexto
-            placeholder="E-mail"
+            rotulo="E-mail"
+            placeholder="voce@email.com"
             autoCapitalize="none"
             keyboardType="email-address"
             value={email}
             onChangeText={setEmail}
             returnKeyType="next"
           />
-          <CampoTexto placeholder="Senha" secureTextEntry value={senha} onChangeText={setSenha} />
+          <CampoTexto
+            rotulo="Senha"
+            placeholder="Sua senha"
+            secureTextEntry
+            value={senha}
+            onChangeText={setSenha}
+          />
 
           {modoCadastro && (
             <CampoTexto
-              placeholder="Confirmar senha"
+              rotulo="Confirmar senha"
+              placeholder="Repita a senha"
               secureTextEntry
               value={confirmarSenha}
               onChangeText={setConfirmarSenha}
               returnKeyType="done"
               onSubmitEditing={handleCadastro}
             />
+          )}
+
+          {!modoCadastro && (
+            <TouchableOpacity onPress={handleEsqueciSenha} hitSlop={8} style={styles.esqueci}>
+              <Text style={styles.esqueciTexto}>Esqueci minha senha</Text>
+            </TouchableOpacity>
           )}
 
           <Botao
@@ -282,7 +320,11 @@ function criarEstilos(cores) {
       color: cores.textoSecundario,
       lineHeight: 22,
       maxWidth: 260,
+      alignSelf: 'center',
     },
+
+    esqueci: { alignSelf: 'flex-end', paddingVertical: 6 },
+    esqueciTexto: { color: cores.destaque, fontSize: 13 },
 
     voltar: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, alignSelf: 'flex-start' },
     voltarTexto: { color: cores.textoSecundario, fontSize: 14 },
