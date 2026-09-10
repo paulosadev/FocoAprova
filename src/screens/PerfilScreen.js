@@ -16,7 +16,12 @@ import { fontes } from '../theme';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
-import { mascararDataBR, dataBRParaISO, dataISOParaBR, diasRestantes } from '../lib/data';
+import SeletorData from '../components/SeletorData';
+import { dataLocalISO, dataISOParaBR, diasRestantes } from '../lib/data';
+
+function isoParaData(iso) {
+  return iso ? new Date(`${iso}T00:00:00`) : null;
+}
 
 const CATEGORIAS = [
   { valor: 'concurso', rotulo: 'Concurso' },
@@ -40,52 +45,31 @@ export default function PerfilScreen() {
 
   const [nome, setNome] = useState('');
   const [sobrenome, setSobrenome] = useState('');
-  const [dataNascimento, setDataNascimento] = useState('');
+  const [dataNascimento, setDataNascimento] = useState(null);
   const [categoria, setCategoria] = useState(null);
   const [descricaoObjetivo, setDescricaoObjetivo] = useState('');
-  const [dataProva, setDataProva] = useState('');
+  const [dataProva, setDataProva] = useState(null);
 
   function iniciarEdicao() {
     setNome(profile?.nome || '');
     setSobrenome(profile?.sobrenome || '');
-    setDataNascimento(dataISOParaBR(profile?.data_nascimento));
+    setDataNascimento(isoParaData(profile?.data_nascimento));
     setCategoria(profile?.objetivo_categoria || null);
     setDescricaoObjetivo(profile?.objetivo_descricao || '');
-    setDataProva(dataISOParaBR(profile?.data_prova));
+    setDataProva(isoParaData(profile?.data_prova));
     setEditando(true);
   }
 
   async function salvar() {
-    let dataNascimentoISO = null;
-    if (dataNascimento.trim()) {
-      dataNascimentoISO = dataBRParaISO(dataNascimento.trim());
-      if (!dataNascimentoISO) {
-        Alert.alert(
-          'Data de nascimento inválida',
-          'Use o formato DD/MM/AAAA, por exemplo 20/05/2001.',
-        );
-        return;
-      }
-    }
-
-    let dataProvaISO = null;
-    if (dataProva.trim()) {
-      dataProvaISO = dataBRParaISO(dataProva.trim());
-      if (!dataProvaISO) {
-        Alert.alert('Data da prova inválida', 'Use o formato DD/MM/AAAA, por exemplo 15/12/2026.');
-        return;
-      }
-    }
-
     setCarregando(true);
     const { error } = await atualizarPerfil({
       nome: nome.trim(),
       sobrenome: sobrenome.trim(),
-      data_nascimento: dataNascimentoISO,
+      data_nascimento: dataNascimento ? dataLocalISO(dataNascimento) : null,
       objetivo_categoria: categoria,
       objetivo_descricao: descricaoObjetivo.trim(),
       objetivo_perguntado: true,
-      data_prova: dataProvaISO,
+      data_prova: dataProva ? dataLocalISO(dataProva) : null,
     });
     setCarregando(false);
     Keyboard.dismiss();
@@ -122,14 +106,13 @@ export default function PerfilScreen() {
                 onChangeText={setSobrenome}
                 returnKeyType="next"
               />
-              <CampoTexto
+              <SeletorData
                 rotulo="Data de nascimento"
-                placeholder="DD/MM/AAAA"
-                value={dataNascimento}
-                onChangeText={(texto) => setDataNascimento(mascararDataBR(texto))}
-                keyboardType="number-pad"
-                returnKeyType="next"
-                maxLength={10}
+                placeholder="Escolher data"
+                valor={dataNascimento}
+                onAlterar={setDataNascimento}
+                minimo={new Date(1900, 0, 1)}
+                maximo={new Date()}
               />
             </Cartao>
 
@@ -160,14 +143,12 @@ export default function PerfilScreen() {
 
             <Cartao>
               <Text style={styles.tituloCartao}>Data da prova</Text>
-              <CampoTexto
-                placeholder="DD/MM/AAAA"
-                value={dataProva}
-                onChangeText={(texto) => setDataProva(mascararDataBR(texto))}
-                keyboardType="number-pad"
-                returnKeyType="done"
-                maxLength={10}
-                onSubmitEditing={salvar}
+              <SeletorData
+                placeholder="Escolher data"
+                valor={dataProva}
+                onAlterar={setDataProva}
+                minimo={new Date(2000, 0, 1)}
+                maximo={new Date(2100, 0, 1)}
               />
             </Cartao>
 

@@ -7,6 +7,10 @@ import { useTema } from '../../src/context/ThemeContext';
 import { fontes } from '../../src/theme';
 import ConteudoDrawer from '../../src/components/ConteudoDrawer';
 
+// garante que a tela inicial do drawer é sempre a Início (index), mesmo com
+// rotas que ordenam antes dela no alfabeto (ajuda, configuracoes)
+export const unstable_settings = { initialRouteName: 'index' };
+
 export default function DrawerLayout() {
   const { cores } = useTema();
 
@@ -49,6 +53,22 @@ export default function DrawerLayout() {
           name="configuracoes"
           options={{
             title: 'Configurações',
+            headerLeft: () => (
+              <TouchableOpacity
+                onPress={() => router.back()}
+                hitSlop={12}
+                style={{ marginLeft: 16 }}
+              >
+                <Ionicons name="chevron-back" size={24} color={cores.textoSecundario} />
+              </TouchableOpacity>
+            ),
+            swipeEnabled: false,
+          }}
+        />
+        <Drawer.Screen
+          name="ajuda"
+          options={{
+            title: 'Ajuda',
             headerLeft: () => (
               <TouchableOpacity
                 onPress={() => router.back()}

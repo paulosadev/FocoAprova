@@ -9,11 +9,7 @@ import Botao from '../components/Botao';
 import SeletorDuracao from '../components/SeletorDuracao';
 import ModoFoco from '../components/ModoFoco';
 import { tocarAlerta } from '../lib/som';
-import {
-  notificar,
-  pedirPermissaoNotificacao,
-  permissaoNotificacaoConcedida,
-} from '../lib/notificacoes';
+import { notificar } from '../lib/notificacoes';
 import { dataLocalISO } from '../lib/data';
 import { fontes } from '../theme';
 
@@ -43,13 +39,11 @@ export default function TimerScreen() {
   const [segundos, setSegundos] = useState(50 * 60);
   const [rodando, setRodando] = useState(false);
   const [ciclosFeitos, setCiclosFeitos] = useState(0);
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(false);
   const [telaCheia, setTelaCheia] = useState(false);
 
   const intervaloRef = useRef(null);
 
   useEffect(() => {
-    permissaoNotificacaoConcedida().then(setNotificacoesAtivas);
     return () => deactivateKeepAwake(KEEP_AWAKE_TAG);
   }, []);
 
@@ -123,11 +117,6 @@ export default function TimerScreen() {
     });
   }
 
-  async function alternarNotificacoes() {
-    const concedida = await pedirPermissaoNotificacao();
-    setNotificacoesAtivas(concedida);
-  }
-
   const rotulo = modo === 'foco' ? 'Foco' : modo === 'pausa' ? 'Pausa curta' : 'Pausa longa';
   const pontosPreenchidos = Array.from({ length: ciclosParaPausaLonga }).map(
     (_, i) => i < ciclosFeitos % ciclosParaPausaLonga,
@@ -168,13 +157,6 @@ export default function TimerScreen() {
               style={{ marginTop: 10 }}
             />
           )}
-
-          <Botao
-            titulo={notificacoesAtivas ? 'Notificações ativadas' : 'Ativar notificações'}
-            onPress={alternarNotificacoes}
-            variante="secundario"
-            style={{ marginTop: 10 }}
-          />
         </Cartao>
 
         <Cartao>

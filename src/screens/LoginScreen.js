@@ -158,13 +158,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <BotaoGoogle onPress={handleGoogle} carregando={carregandoGoogle} />
-          <View style={styles.separador}>
-            <View style={styles.linha} />
-            <Text style={styles.separadorTexto}>ou</Text>
-            <View style={styles.linha} />
-          </View>
-
           {modoCadastro && (
             <>
               <CampoTexto placeholder="Nome" value={nome} onChangeText={setNome} returnKeyType="next" />
@@ -204,6 +197,14 @@ export default function LoginScreen() {
             disabled={carregando}
             style={{ marginTop: 8 }}
           />
+
+          <View style={styles.separador}>
+            <View style={styles.linha} />
+            <Text style={styles.separadorTexto}>ou</Text>
+            <View style={styles.linha} />
+          </View>
+
+          <BotaoGoogle variante="icone" onPress={handleGoogle} carregando={carregandoGoogle} />
         </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
     </View>

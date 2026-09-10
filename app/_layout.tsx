@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -15,6 +15,7 @@ import { PreferenciasProvider } from '../src/context/PreferenciasContext';
 import LoginScreen from '../src/screens/LoginScreen';
 import ObjetivoScreen from '../src/screens/ObjetivoScreen';
 import SplashInicial from '../src/components/SplashInicial';
+import { garantirPermissaoNotificacao } from '../src/lib/notificacoes';
 
 // mais cedo possível (antes de qualquer render): evita o flash cinza do
 // windowBackground padrão do Android nas transições entre telas/splash
@@ -25,32 +26,58 @@ function Conteudo() {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
 
-  const [fontesCarregadas] = useFonts({
+  // fonte é cosmética: se falhar ou demorar, seguir com a fonte do sistema
+  const [fontesCarregadas, fontesErro] = useFonts({
     SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
   });
+  const fontesProntas = fontesCarregadas || !!fontesErro;
 
-  // splash controla o próprio tempo mínimo, evita piscar se a sessão carregar rápido demais
+  // tempo mínimo de splash controlado aqui (Conteudo nunca desmonta), com
+  // teto de segurança pra nunca travar se algo abaixo não resolver
   const [splashTerminou, setSplashTerminou] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSplashTerminou(true), 1400);
+    return () => clearTimeout(t);
+  }, []);
+  const [tetoAtingido, setTetoAtingido] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTetoAtingido(true), 8000);
+    return () => clearTimeout(t);
+  }, []);
 
-  if (!splashTerminou) {
-    return <SplashInicial onTerminar={() => setSplashTerminou(true)} />;
+  const pronto = splashTerminou && (tetoAtingido || (!carregando && fontesProntas));
+
+  const precisaObjetivo = !!session && !!profile && !profile.objetivo_perguntado;
+  const dentroDoApp = !!session && !!profile && !precisaObjetivo;
+
+  // primeira entrada no app: pede permissão de notificação uma única vez
+  useEffect(() => {
+    if (dentroDoApp) garantirPermissaoNotificacao();
+  }, [dentroDoApp]);
+
+  if (!pronto) {
+    return <SplashInicial />;
   }
 
-  if (carregando || !fontesCarregadas) {
-    return <View style={styles.carregando} />;
-  }
-
-  if (!session) {
-    return <LoginScreen />;
-  }
-
-  // pergunta o objetivo só uma vez, depois objetivo_perguntado fica true
-  if (profile && !profile.objetivo_perguntado) {
-    return <ObjetivoScreen />;
-  }
-
-  return <Stack screenOptions={{ headerShown: false }} />;
+  // O <Stack> fica SEMPRE montado — se desmontasse ao autenticar, o router
+  // perderia a rota atual e a tela Início não voltaria. Login e Objetivo
+  // entram como camadas por cima.
+  return (
+    <View style={styles.flex}>
+      <Stack screenOptions={{ headerShown: false }} />
+      {!session && (
+        <View style={StyleSheet.absoluteFill}>
+          <LoginScreen />
+        </View>
+      )}
+      {precisaObjetivo && (
+        <View style={StyleSheet.absoluteFill}>
+          <ObjetivoScreen />
+        </View>
+      )}
+    </View>
+  );
 }
 
 function Portao() {
@@ -79,6 +106,6 @@ export default function RootLayout() {
 
 function criarEstilos(cores: Cores) {
   return StyleSheet.create({
-    carregando: { flex: 1, backgroundColor: cores.fundo },
+    flex: { flex: 1, backgroundColor: cores.fundo },
   });
 }

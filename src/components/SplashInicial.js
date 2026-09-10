@@ -1,44 +1,27 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Image, StyleSheet, Text } from 'react-native';
+import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
 
 const COR_FUNDO = '#0c131b';
 const { width: larguraTela, height: alturaTela } = Dimensions.get('window');
 
-// splash com fade enquanto checa a sessão antes de ir pro Login/Início
-// a cor de fundo nativa (windowBackground) é configurada em app/_layout.tsx
-// e no app.json (expo-system-ui), pra cobrir o app inteiro, não só aqui
-export default function SplashInicial({ onTerminar }) {
-  const opacidade = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const tempoMinimo = setTimeout(() => {
-      Animated.timing(opacidade, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => onTerminar());
-    }, 1500);
-
-    return () => clearTimeout(tempoMinimo);
-  }, []);
-
+// só o visual do splash — o tempo mínimo é controlado por quem renderiza
+// (app/_layout.tsx), pra não depender de callback de animação que pode não
+// disparar em alguns aparelhos
+export default function SplashInicial() {
   return (
-    <Animated.View style={[styles.container, { opacity: opacidade }]}>
+    <View style={styles.container}>
       <Image
         source={require('../../assets/logo/logo-mark-escuro.png')}
         style={styles.logo}
         resizeMode="contain"
       />
       <Text style={styles.nome}>FocoAprova</Text>
-    </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    // porcentagem + pixels absolutos (Dimensions) juntos: se o container pai
-    // não tiver altura definida no edge-to-edge, o '100%' sozinho não cobre a tela
     width: '100%',
     height: '100%',
     ...(larguraTela && alturaTela ? { width: larguraTela, height: alturaTela } : null),

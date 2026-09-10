@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
 import { usePreferencias } from '../context/PreferenciasContext';
-import { permissaoNotificacaoConcedida, pedirPermissaoNotificacao } from '../lib/notificacoes';
 import Cartao from '../components/Cartao';
 
 // trocar pela URL real do formulário de sugestões quando estiver pronta
@@ -24,23 +23,7 @@ export default function ConfiguracoesScreen() {
   const styles = criarEstilos(cores);
   const { sair } = useAuth();
   const { somAtivado, setSomAtivado } = usePreferencias();
-
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(false);
-
-  useEffect(() => {
-    permissaoNotificacaoConcedida().then(setNotificacoesAtivas);
-  }, []);
-
-  async function ativarNotificacoes() {
-    const concedida = await pedirPermissaoNotificacao();
-    setNotificacoesAtivas(concedida);
-    if (!concedida) {
-      Alert.alert(
-        'Permissão negada',
-        'Ative as notificações do FocoAprova nas configurações do sistema.',
-      );
-    }
-  }
+  const router = useRouter();
 
   function abrirSugestoes() {
     if (URL_SUGESTOES) {
@@ -50,11 +33,8 @@ export default function ConfiguracoesScreen() {
     }
   }
 
-  function abrirAjuda() {
-    Alert.alert(
-      'Como usar',
-      'Monte seu cronograma por dia da semana, use o Timer pra blocos de foco, registre questões e simulados, e acompanhe tudo em Progresso.',
-    );
+  function sobre() {
+    Alert.alert('FocoAprova', `Versão ${versao}\n\nApp para organizar sua rotina de estudos.`);
   }
 
   function confirmarSaida() {
@@ -84,24 +64,8 @@ export default function ConfiguracoesScreen() {
         </View>
       </Cartao>
 
-      {/* Preferências */}
+      {/* Som */}
       <Cartao>
-        <Text style={styles.tituloCartao}>Preferências</Text>
-
-        <View style={[styles.linhaItem, styles.comBorda]}>
-          <View style={styles.itemInfo}>
-            <Text style={styles.itemTitulo}>Notificações</Text>
-            <Text style={styles.itemSub}>Avisos de fim de bloco e de pausa</Text>
-          </View>
-          {notificacoesAtivas ? (
-            <Text style={styles.badgeOk}>Ativadas</Text>
-          ) : (
-            <TouchableOpacity style={styles.botaoPequeno} onPress={ativarNotificacoes}>
-              <Text style={styles.botaoPequenoTexto}>Ativar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
         <View style={styles.linhaItem}>
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitulo}>Som</Text>
@@ -119,7 +83,7 @@ export default function ConfiguracoesScreen() {
 
       {/* Links */}
       <Cartao>
-        <TouchableOpacity style={[styles.linhaLink, styles.comBorda]} onPress={abrirAjuda}>
+        <TouchableOpacity style={[styles.linhaLink, styles.comBorda]} onPress={() => router.push('/ajuda')}>
           <Text style={styles.linkTexto}>Ajuda / Como usar</Text>
           <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
         </TouchableOpacity>
@@ -129,12 +93,13 @@ export default function ConfiguracoesScreen() {
           <Ionicons name="open-outline" size={17} color={cores.textoFraco} />
         </TouchableOpacity>
 
-        <View style={styles.linhaLink}>
+        <TouchableOpacity style={styles.linhaLink} onPress={sobre}>
           <View>
             <Text style={styles.linkTexto}>Sobre o app</Text>
             <Text style={styles.itemSub}>FocoAprova · v{versao}</Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
+        </TouchableOpacity>
       </Cartao>
 
       <TouchableOpacity style={styles.botaoSair} onPress={confirmarSaida}>
@@ -170,25 +135,12 @@ function criarEstilos(cores) {
     textoChip: { fontSize: 13, color: cores.textoSecundario },
     textoChipAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
 
-    linhaItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 12,
-    },
-    comBorda: { borderBottomWidth: 1, borderBottomColor: cores.borda },
+    linhaItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     itemInfo: { flex: 1 },
     itemTitulo: { fontSize: 14, color: cores.texto },
     itemSub: { fontSize: 11, color: cores.textoFraco, marginTop: 2 },
-    badgeOk: { fontSize: 13, color: cores.sucesso, fontWeight: '600' },
-    botaoPequeno: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 8,
-      backgroundColor: cores.destaque,
-    },
-    botaoPequenoTexto: { color: cores.destaqueTexto, fontSize: 13, fontWeight: '700' },
 
+    comBorda: { borderBottomWidth: 1, borderBottomColor: cores.borda },
     linhaLink: {
       flexDirection: 'row',
       alignItems: 'center',
