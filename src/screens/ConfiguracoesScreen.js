@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking } from 'react-native';
 import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -34,7 +35,32 @@ export default function ConfiguracoesScreen() {
   }
 
   function sobre() {
-    Alert.alert('FocoAprova', `Versão ${versao}\n\nApp para organizar sua rotina de estudos.`);
+    const id = (Updates.updateId ?? 'embutido').slice(0, 8);
+    Alert.alert(
+      'FocoAprova',
+      `Versão ${versao}\n\nApp para organizar sua rotina de estudos.\n\ncanal: ${Updates.channel ?? '-'}\nupdate: ${id}\nruntime: ${(Updates.runtimeVersion ?? '-').slice(0, 12)}`,
+    );
+  }
+
+  async function verificarAtualizacao() {
+    if (!Updates.isEnabled) {
+      Alert.alert('Indisponível', 'A verificação de atualização só funciona no app publicado.');
+      return;
+    }
+    try {
+      const r = await Updates.checkForUpdateAsync();
+      if (!r.isAvailable) {
+        Alert.alert('Tudo atualizado', 'Você já está na versão mais recente.');
+        return;
+      }
+      await Updates.fetchUpdateAsync();
+      Alert.alert('Atualização baixada', 'O app vai reiniciar para aplicar.', [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Reiniciar', onPress: () => Updates.reloadAsync() },
+      ]);
+    } catch (erro) {
+      Alert.alert('Não deu pra verificar', String(erro?.message ?? erro));
+    }
   }
 
   function confirmarSaida() {
@@ -91,6 +117,11 @@ export default function ConfiguracoesScreen() {
         <TouchableOpacity style={[styles.linhaLink, styles.comBorda]} onPress={abrirSugestoes}>
           <Text style={styles.linkTexto}>Enviar sugestão ou relatar bug</Text>
           <Ionicons name="open-outline" size={17} color={cores.textoFraco} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.linhaLink, styles.comBorda]} onPress={verificarAtualizacao}>
+          <Text style={styles.linkTexto}>Verificar atualização</Text>
+          <Ionicons name="refresh" size={17} color={cores.textoFraco} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.linhaLink} onPress={sobre}>

@@ -19,26 +19,45 @@ export default function RedefinirSenhaScreen() {
   const [senha, setSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [debug, setDebug] = useState(null); // TEMP: diagnóstico do link
 
   useEffect(() => {
     let cancelado = false;
 
     async function preparar() {
-      const url = urlAtual || (await Linking.getInitialURL());
+      const inicial = await Linking.getInitialURL();
+      const url = urlAtual || inicial;
       const params = extrairParametros(url || '');
+      const info = {
+        urlAtual: urlAtual ?? '(null)',
+        urlInicial: inicial ?? '(null)',
+        chaves: Object.keys(params).join(', ') || '(nenhuma)',
+        error: params.error ?? '',
+        error_code: params.error_code ?? '',
+        error_description: params.error_description ?? '',
+        temTokens: !!(params.access_token && params.refresh_token),
+      };
 
       if (params.access_token && params.refresh_token) {
         const { error } = await supabase.auth.setSession({
           access_token: params.access_token,
           refresh_token: params.refresh_token,
         });
-        if (!cancelado) setEstado(error ? 'invalido' : 'pronto');
+        info.setSessionError = error?.message ?? '';
+        if (!cancelado) {
+          setDebug(info);
+          setEstado(error ? 'invalido' : 'pronto');
+        }
         return;
       }
 
       // sem tokens na URL: pode já ter uma sessão de recuperação ativa
       const { data } = await supabase.auth.getSession();
-      if (!cancelado) setEstado(data.session ? 'pronto' : 'invalido');
+      info.sessaoExistente = !!data.session;
+      if (!cancelado) {
+        setDebug(info);
+        setEstado(data.session ? 'pronto' : 'invalido');
+      }
     }
 
     preparar();
@@ -90,6 +109,23 @@ export default function RedefinirSenhaScreen() {
               <Text style={styles.aviso}>
                 O link é inválido ou expirou. Peça um novo em &quot;Esqueci minha senha&quot;.
               </Text>
+
+              {!!debug && (
+                <View style={styles.debugCaixa}>
+                  <Text style={styles.debugTitulo}>debug do link</Text>
+                  <Text style={styles.debugTexto} selectable>
+                    urlAtual: {debug.urlAtual}
+                    {'\n'}urlInicial: {debug.urlInicial}
+                    {'\n'}params: {debug.chaves}
+                    {'\n'}temTokens: {String(debug.temTokens)}
+                    {'\n'}error: {debug.error || '(nenhum)'}
+                    {'\n'}error_code: {debug.error_code || '(nenhum)'}
+                    {'\n'}error_description: {debug.error_description || '(nenhum)'}
+                    {debug.setSessionError ? `\nsetSession: ${debug.setSessionError}` : ''}
+                  </Text>
+                </View>
+              )}
+
               <Botao
                 titulo="Voltar ao login"
                 onPress={async () => {
@@ -151,5 +187,21 @@ function criarEstilos(cores) {
       lineHeight: 20,
       marginBottom: 16,
     },
+    debugCaixa: {
+      backgroundColor: cores.superficie2,
+      borderWidth: 1,
+      borderColor: cores.borda,
+      borderRadius: 8,
+      padding: 12,
+    },
+    debugTitulo: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+      color: cores.ambar,
+      marginBottom: 6,
+    },
+    debugTexto: { fontSize: 11, color: cores.textoSecundario, lineHeight: 16 },
   });
 }
