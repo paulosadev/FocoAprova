@@ -83,7 +83,7 @@ export default function LoginScreen() {
     }
 
     setCarregando(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password: senha,
       options: { data: { nome: nome.trim(), sobrenome: sobrenome.trim() } },
@@ -91,10 +91,52 @@ export default function LoginScreen() {
     setCarregando(false);
 
     if (error) {
+      if (ehErroEmailJaExiste(error)) {
+        avisarContaExistente();
+        return;
+      }
       Alert.alert('Erro ao cadastrar', error.message);
-    } else {
-      Alert.alert('Cadastro realizado', 'Verifique seu e-mail para confirmar a conta.');
+      return;
     }
+
+    // com confirmação de e-mail ligada, o Supabase esconde que a conta já
+    // existe devolvendo "sucesso" com a lista de identities vazia
+    if (data?.user && (data.user.identities?.length ?? 0) === 0) {
+      avisarContaExistente();
+      return;
+    }
+
+    Alert.alert('Cadastro realizado', 'Verifique seu e-mail para confirmar a conta.');
+  }
+
+  function ehErroEmailJaExiste(error) {
+    const msg = (error?.message || '').toLowerCase();
+    return (
+      error?.code === 'user_already_exists' ||
+      error?.code === 'email_exists' ||
+      msg.includes('already registered') ||
+      msg.includes('already been registered') ||
+      msg.includes('user already exists')
+    );
+  }
+
+  function avisarContaExistente() {
+    Alert.alert(
+      'E-mail já cadastrado',
+      'Esse e-mail já tem uma conta. Quer entrar em vez de cadastrar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Entrar',
+          onPress: () => {
+            setModoCadastro(false);
+            setSenha('');
+            setConfirmarSenha('');
+            // o e-mail digitado continua no state e aparece já preenchido
+          },
+        },
+      ],
+    );
   }
 
   // ---------- Boas-vindas ----------
@@ -108,7 +150,6 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.acoes}>
-          <BotaoGoogle onPress={handleGoogle} carregando={carregandoGoogle} />
           <Botao titulo="Entrar" onPress={() => abrirForm(false)} style={styles.botaoGrande} />
           <Botao
             titulo="Cadastrar"
