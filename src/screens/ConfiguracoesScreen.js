@@ -102,9 +102,30 @@ export default function ConfiguracoesScreen() {
         </TouchableOpacity>
       </Cartao>
 
-      <TouchableOpacity style={styles.botaoSair} onPress={confirmarSaida}>
-        <Text style={styles.botaoSairTexto}>Sair da conta</Text>
-      </TouchableOpacity>
+      {/* Conta */}
+      <Cartao>
+        <Text style={styles.tituloCartao}>Conta</Text>
+
+        <TouchableOpacity
+          style={[styles.linhaLink, styles.comBorda]}
+          onPress={() => router.push('/trocar-senha')}
+        >
+          <Text style={styles.linkTexto}>Trocar senha</Text>
+          <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.linhaLink, styles.comBorda]}
+          onPress={() => router.push('/trocar-email')}
+        >
+          <Text style={styles.linkTexto}>Trocar e-mail</Text>
+          <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.linhaLink} onPress={confirmarSaida}>
+          <Text style={[styles.linkTexto, { color: cores.perigo }]}>Sair da conta</Text>
+        </TouchableOpacity>
+      </Cartao>
     </ScrollView>
   );
 }
@@ -148,16 +169,5 @@ function criarEstilos(cores) {
       paddingVertical: 14,
     },
     linkTexto: { fontSize: 14, color: cores.texto },
-
-    botaoSair: {
-      marginTop: 4,
-      height: 48,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: 8,
-      borderWidth: 1.5,
-      borderColor: cores.perigo,
-    },
-    botaoSairTexto: { color: cores.perigo, fontSize: 15, fontWeight: '600' },
   });
 }

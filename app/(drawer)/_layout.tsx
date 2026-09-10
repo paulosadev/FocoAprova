@@ -14,6 +14,13 @@ export const unstable_settings = { initialRouteName: 'index' };
 export default function DrawerLayout() {
   const { cores } = useTema();
 
+  const botaoVoltar = () => (
+    <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={{ marginLeft: 16 }}>
+      <Ionicons name="chevron-back" size={24} color={cores.textoSecundario} />
+    </TouchableOpacity>
+  );
+  const subTela = (title: string) => ({ title, headerLeft: botaoVoltar, swipeEnabled: false });
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Drawer
@@ -49,38 +56,10 @@ export default function DrawerLayout() {
             ),
           }}
         />
-        <Drawer.Screen
-          name="configuracoes"
-          options={{
-            title: 'Configurações',
-            headerLeft: () => (
-              <TouchableOpacity
-                onPress={() => router.back()}
-                hitSlop={12}
-                style={{ marginLeft: 16 }}
-              >
-                <Ionicons name="chevron-back" size={24} color={cores.textoSecundario} />
-              </TouchableOpacity>
-            ),
-            swipeEnabled: false,
-          }}
-        />
-        <Drawer.Screen
-          name="ajuda"
-          options={{
-            title: 'Ajuda',
-            headerLeft: () => (
-              <TouchableOpacity
-                onPress={() => router.back()}
-                hitSlop={12}
-                style={{ marginLeft: 16 }}
-              >
-                <Ionicons name="chevron-back" size={24} color={cores.textoSecundario} />
-              </TouchableOpacity>
-            ),
-            swipeEnabled: false,
-          }}
-        />
+        <Drawer.Screen name="configuracoes" options={subTela('Configurações')} />
+        <Drawer.Screen name="ajuda" options={subTela('Ajuda')} />
+        <Drawer.Screen name="trocar-senha" options={subTela('Trocar senha')} />
+        <Drawer.Screen name="trocar-email" options={subTela('Trocar e-mail')} />
       </Drawer>
     </GestureHandlerRootView>
   );
