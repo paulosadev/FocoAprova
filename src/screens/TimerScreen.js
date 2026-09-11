@@ -42,18 +42,25 @@ export default function TimerScreen() {
   const [telaCheia, setTelaCheia] = useState(false);
 
   const intervaloRef = useRef(null);
+  const rodandoRef = useRef(rodando);
 
   useEffect(() => {
     return () => deactivateKeepAwake(KEEP_AWAKE_TAG);
   }, []);
 
   useEffect(() => {
-    // atualiza o preview com a duração do bloco atual sempre que ela muda,
-    // mas só enquanto não estiver rodando (senão atropelaria a contagem)
-    if (rodando) return;
+    rodandoRef.current = rodando;
+  }, [rodando]);
+
+  useEffect(() => {
+    // atualiza o preview com a duração do bloco atual quando ela muda ou o
+    // modo troca, mas só enquanto não estiver rodando (senão atropelaria a
+    // contagem). Não depende de `rodando` pra não disparar (e resetar o
+    // tempo) só porque o usuário pausou.
+    if (rodandoRef.current) return;
     const duracoes = { foco: focoMin, pausa: pausaMin, pausaLonga: pausaLongaMin };
     setSegundos(duracoes[modo] * 60);
-  }, [focoMin, pausaMin, pausaLongaMin, rodando, modo]);
+  }, [focoMin, pausaMin, pausaLongaMin, modo]);
 
   function iniciar() {
     setRodando(true);
@@ -72,7 +79,6 @@ export default function TimerScreen() {
 
   function pausar() {
     setRodando(false);
-    setTelaCheia(false);
     clearInterval(intervaloRef.current);
     deactivateKeepAwake(KEEP_AWAKE_TAG);
   }
@@ -176,7 +182,9 @@ export default function TimerScreen() {
         rotulo={rotulo}
         display={formatar(segundos)}
         pontos={pontosPreenchidos}
+        rodando={rodando}
         onPausar={pausar}
+        onIniciar={iniciar}
         onSair={() => setTelaCheia(false)}
       />
     </View>

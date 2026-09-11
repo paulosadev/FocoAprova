@@ -4,7 +4,7 @@ import { useTema } from '../context/ThemeContext';
 import { fontes } from '../theme';
 
 // tela cheia do Timer/Simulado, só cronômetro e botões pra evitar distração
-export default function ModoFoco({ visivel, rotulo, display, pontos, onPausar, onSair }) {
+export default function ModoFoco({ visivel, rotulo, display, pontos, rodando, onPausar, onIniciar, onSair }) {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   return (
@@ -27,7 +27,12 @@ export default function ModoFoco({ visivel, rotulo, display, pontos, onPausar, o
         )}
 
         <View style={styles.controles}>
-          <Botao titulo="Pausar" onPress={onPausar} variante="secundario" style={{ flex: 1 }} />
+          <Botao
+            titulo={rodando ? 'Pausar' : 'Iniciar'}
+            onPress={rodando ? onPausar : onIniciar}
+            variante="secundario"
+            style={{ flex: 1 }}
+          />
           <Botao
             titulo="Sair da tela cheia"
             onPress={onSair}

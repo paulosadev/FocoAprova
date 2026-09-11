@@ -42,6 +42,7 @@ export default function SimuladoScreen() {
   const [historico, setHistorico] = useState([]);
   const [editandoSimuladoId, setEditandoSimuladoId] = useState(null);
   const intervaloRef = useRef(null);
+  const rodandoRef = useRef(rodando);
 
   // Detalhamento por matéria
   const [disciplinas, setDisciplinas] = useState([]);
@@ -69,10 +70,16 @@ export default function SimuladoScreen() {
   }, []);
 
   useEffect(() => {
+    rodandoRef.current = rodando;
+  }, [rodando]);
+
+  useEffect(() => {
     // atualiza o preview sempre que a duração muda, mas só enquanto não
-    // estiver rodando (senão atropelaria a contagem em andamento)
-    if (!rodando) setSegundos(duracaoTotalMin * 60);
-  }, [duracaoTotalMin, rodando]);
+    // estiver rodando (senão atropelaria a contagem em andamento). Não
+    // depende de `rodando` pra não disparar (e resetar o tempo) só porque
+    // o usuário pausou.
+    if (!rodandoRef.current) setSegundos(duracaoTotalMin * 60);
+  }, [duracaoTotalMin]);
 
   // Mantém o detalhamento do simulado em edição sincronizado após cada recarga
   useEffect(() => {
@@ -140,7 +147,6 @@ export default function SimuladoScreen() {
 
   function pausar() {
     setRodando(false);
-    setTelaCheia(false);
     clearInterval(intervaloRef.current);
     deactivateKeepAwake(KEEP_AWAKE_TAG);
   }
@@ -623,7 +629,9 @@ export default function SimuladoScreen() {
         visivel={telaCheia}
         rotulo="Simulado"
         display={formatar(segundos)}
+        rodando={rodando}
         onPausar={pausar}
+        onIniciar={iniciar}
         onSair={() => setTelaCheia(false)}
       />
     </View>
