@@ -8,8 +8,7 @@ import { useTema } from '../context/ThemeContext';
 import { usePreferencias } from '../context/PreferenciasContext';
 import Cartao from '../components/Cartao';
 
-const URL_SUGESTOES =
-  'https://docs.google.com/forms/d/e/1FAIpQLSeO3UKdqJoAQKQimqwqx7MhaxtjNLKmiEDO8fV2odSeDN91GA/viewform?usp=sharing&ouid=110526307303069229295';
+const URL_SUGESTOES = 'https://forms.gle/vdpSEC1AW84Noayn8';
 
 const MODOS_TEMA = [
   { valor: 'light', rotulo: 'Claro' },
