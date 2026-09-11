@@ -12,6 +12,7 @@ import ModoEstudoFlashcards from '../components/ModoEstudoFlashcards';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
 
 const INTERVALOS_REVISAO = [1, 3, 7, 14, 30];
+const LIMITE_DIARIO_IA = 10;
 
 function hojeISO() {
   return dataLocalISO();
@@ -31,6 +32,10 @@ export default function FlashcardsScreen() {
   const [editandoId, setEditandoId] = useState(null);
   const [fila, setFila] = useState(null); // null = modo de estudo fechado; array = fila em andamento
 
+  const [disciplinaIASelecionada, setDisciplinaIASelecionada] = useState(null);
+  const [assuntoIA, setAssuntoIA] = useState('');
+  const [gerandoIA, setGerandoIA] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       carregarDados();
@@ -42,6 +47,9 @@ export default function FlashcardsScreen() {
     setDisciplinas(disc || []);
     if (disc && disc.length > 0 && !disciplinaSelecionada) {
       setDisciplinaSelecionada(disc[0].id);
+    }
+    if (disc && disc.length > 0 && !disciplinaIASelecionada) {
+      setDisciplinaIASelecionada(disc[0].id);
     }
 
     const { data: cards } = await supabase
@@ -134,6 +142,64 @@ export default function FlashcardsScreen() {
     carregarDados();
   }
 
+  async function extrairMensagemErroFunction(error) {
+    try {
+      if (error?.context?.json) {
+        const corpo = await error.context.json();
+        if (corpo?.error) return corpo.error;
+      }
+    } catch {
+      // mantém a mensagem padrão abaixo
+    }
+    return error?.message || 'Tente novamente em instantes.';
+  }
+
+  async function gerarFlashcardsIA() {
+    const disc = disciplinas.find((d) => d.id === disciplinaIASelecionada);
+    if (!disc) {
+      Alert.alert('Escolha uma disciplina', 'Selecione a disciplina antes de gerar.');
+      return;
+    }
+    if (!assuntoIA.trim()) {
+      Alert.alert('Informe o assunto', 'Digite o assunto para a IA gerar os flashcards.');
+      return;
+    }
+    if (restanteIA <= 0) {
+      Alert.alert(
+        'Limite atingido',
+        `Você já gerou o máximo de ${LIMITE_DIARIO_IA} flashcards por IA para ${disc.nome} hoje.`,
+      );
+      return;
+    }
+
+    Keyboard.dismiss();
+    setGerandoIA(true);
+    const { data, error } = await supabase.functions.invoke('gerar-flashcards', {
+      body: {
+        disciplina_nome: disc.nome,
+        assunto: assuntoIA.trim(),
+        data_local: hojeISO(),
+      },
+    });
+    setGerandoIA(false);
+
+    if (error) {
+      const mensagem = await extrairMensagemErroFunction(error);
+      Alert.alert('Não foi possível gerar', mensagem);
+      return;
+    }
+
+    const criados = data?.criados ?? 0;
+    Alert.alert(
+      'Prontinho!',
+      criados > 0
+        ? `${criados} flashcard${criados === 1 ? '' : 's'} gerado${criados === 1 ? '' : 's'} para ${disc.nome}.`
+        : 'Nenhum flashcard foi gerado. Tente reformular o assunto.',
+    );
+    setAssuntoIA('');
+    carregarDados();
+  }
+
   function iniciarEstudo() {
     if (paraRevisarHoje.length === 0) return;
     setFila(paraRevisarHoje);
@@ -146,6 +212,17 @@ export default function FlashcardsScreen() {
   const paraRevisarHoje = cartoes.filter(
     (c) => c.proxima_revisao && c.proxima_revisao <= hojeISO(),
   );
+
+  const disciplinaIANome = disciplinas.find((d) => d.id === disciplinaIASelecionada)?.nome;
+  const geradosHojeIA = disciplinaIANome
+    ? cartoes.filter(
+        (c) =>
+          c.disciplina_nome === disciplinaIANome &&
+          c.gerado_por_ia &&
+          c.created_at?.slice(0, 10) === hojeISO(),
+      ).length
+    : 0;
+  const restanteIA = Math.max(0, LIMITE_DIARIO_IA - geradosHojeIA);
 
   return (
     <View style={styles.flex}>
@@ -217,6 +294,59 @@ export default function FlashcardsScreen() {
             }
             onPress={salvarCartao}
             disabled={carregando}
+          />
+        </Cartao>
+
+        {/* Gerar com IA */}
+        <Cartao>
+          <View style={styles.cabecalhoCartao}>
+            <Text style={[styles.tituloCartao, styles.tituloCartaoSemMargem]}>Gerar com IA</Text>
+            <Text style={styles.contadorAmbar}>
+              {restanteIA}/{LIMITE_DIARIO_IA}
+            </Text>
+          </View>
+
+          <Text style={styles.rotuloPequeno}>Disciplina</Text>
+          <View style={styles.linhaChips}>
+            {disciplinas.map((d) => (
+              <TouchableOpacity
+                key={d.id}
+                style={[styles.chip, disciplinaIASelecionada === d.id && styles.chipAtivo]}
+                onPress={() => setDisciplinaIASelecionada(d.id)}
+              >
+                <Text
+                  style={[
+                    styles.textoChip,
+                    disciplinaIASelecionada === d.id && styles.textoChipAtivo,
+                  ]}
+                >
+                  {d.nome}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {disciplinas.length === 0 && (
+              <Text style={styles.vazioChips}>Cadastre disciplinas na aba Cronograma.</Text>
+            )}
+          </View>
+
+          <CampoTexto
+            rotulo="Assunto"
+            placeholder="Ex.: Revolução Francesa, Verbos irregulares..."
+            value={assuntoIA}
+            onChangeText={setAssuntoIA}
+            returnKeyType="done"
+          />
+
+          <Text style={styles.textoResumoRevisao}>
+            {restanteIA > 0
+              ? `Restam ${restanteIA} de ${LIMITE_DIARIO_IA} flashcards por IA hoje nessa disciplina.`
+              : 'Limite diário de flashcards por IA atingido nessa disciplina hoje.'}
+          </Text>
+
+          <Botao
+            titulo={gerandoIA ? 'Gerando...' : 'Gerar com IA'}
+            onPress={gerarFlashcardsIA}
+            disabled={gerandoIA || restanteIA <= 0 || disciplinas.length === 0}
           />
         </Cartao>
 
