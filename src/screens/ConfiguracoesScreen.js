@@ -8,8 +8,8 @@ import { useTema } from '../context/ThemeContext';
 import { usePreferencias } from '../context/PreferenciasContext';
 import Cartao from '../components/Cartao';
 
-// trocar pela URL real do formulário de sugestões quando estiver pronta
-const URL_SUGESTOES = null;
+const URL_SUGESTOES =
+  'https://docs.google.com/forms/d/e/1FAIpQLSeO3UKdqJoAQKQimqwqx7MhaxtjNLKmiEDO8fV2odSeDN91GA/viewform?usp=sharing&ouid=110526307303069229295';
 
 const MODOS_TEMA = [
   { valor: 'light', rotulo: 'Claro' },
@@ -27,11 +27,9 @@ export default function ConfiguracoesScreen() {
   const router = useRouter();
 
   function abrirSugestoes() {
-    if (URL_SUGESTOES) {
-      Linking.openURL(URL_SUGESTOES);
-    } else {
-      Alert.alert('Em breve', 'O formulário de sugestões ainda vai ser disponibilizado.');
-    }
+    Linking.openURL(URL_SUGESTOES).catch(() => {
+      Alert.alert('Não foi possível abrir', 'Tente novamente em instantes.');
+    });
   }
 
   function sobre() {
