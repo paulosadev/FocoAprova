@@ -12,7 +12,7 @@ const CORS_HEADERS = {
 
 const LIMITE_DIARIO = 10;
 const MAX_POR_CHAMADA = 5;
-const MODELO_GEMINI = 'gemini-2.5-flash-lite';
+const MODELO_GEMINI = 'gemini-3.5-flash-lite';
 
 type Flashcard = { frente: string; verso: string };
 
