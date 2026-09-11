@@ -12,7 +12,7 @@ const CORS_HEADERS = {
 
 const LIMITE_DIARIO = 10;
 const MAX_POR_CHAMADA = 5;
-const MODELO_GROQ = 'llama-3.3-70b-versatile';
+const MODELO_GROQ = 'openai/gpt-oss-120b';
 
 type Flashcard = { frente: string; verso: string };
 
