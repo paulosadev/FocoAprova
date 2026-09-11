@@ -1,7 +1,7 @@
 // Edge Function: gerar-flashcards
-// Gera flashcards via Gemini, respeitando o limite diário de 10 por disciplina por usuário.
+// Gera flashcards via Groq, respeitando o limite diário de 10 por disciplina por usuário.
 // Deploy: supabase functions deploy gerar-flashcards
-// Secret:  supabase secrets set GEMINI_API_KEY=...
+// Secret:  supabase secrets set GROQ_API_KEY=...
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.4';
 
@@ -12,7 +12,7 @@ const CORS_HEADERS = {
 
 const LIMITE_DIARIO = 10;
 const MAX_POR_CHAMADA = 5;
-const MODELO_GEMINI = 'gemini-3.5-flash-lite';
+const MODELO_GROQ = 'llama-3.3-70b-versatile';
 
 type Flashcard = { frente: string; verso: string };
 
@@ -27,8 +27,8 @@ Deno.serve(async (req: Request) => {
       return respostaErro('Não autenticado.', 401);
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiApiKey) {
+    const groqApiKey = Deno.env.get('GROQ_API_KEY');
+    if (!groqApiKey) {
       return respostaErro('IA não configurada no servidor.', 500);
     }
 
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
     const restante = LIMITE_DIARIO - jaGerados;
     const quantidade = Math.min(MAX_POR_CHAMADA, restante);
 
-    const cartoesGerados = await gerarComGemini(geminiApiKey, disciplinaNome, assunto, quantidade);
+    const cartoesGerados = await gerarComGroq(groqApiKey, disciplinaNome, assunto, quantidade);
 
     if (cartoesGerados.length === 0) {
       return respostaErro('A IA não conseguiu gerar flashcards para esse assunto. Tente reformular.', 502);
@@ -129,7 +129,7 @@ function respostaErro(mensagem: string, status: number) {
   });
 }
 
-async function gerarComGemini(
+async function gerarComGroq(
   apiKey: string,
   disciplina: string,
   assunto: string,
@@ -143,57 +143,50 @@ Gere exatamente ${quantidade} flashcards sobre esse assunto. Cada flashcard deve
 - "frente": uma pergunta ou termo curto e claro
 - "verso": a resposta correta, objetiva (1 a 3 frases)
 
-Não repita perguntas entre si. Não inclua números ou marcadores no texto.`;
+Não repita perguntas entre si. Não inclua números ou marcadores no texto.
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent`;
+Responda estritamente em JSON, no formato:
+{"flashcards": [{"frente": "...", "verso": "..."}, ...]}
+com exatamente ${quantidade} itens no array "flashcards". Não escreva nada fora desse JSON.`;
 
-  const resposta = await fetch(url, {
+  const resposta = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'ARRAY',
-          items: {
-            type: 'OBJECT',
-            properties: {
-              frente: { type: 'STRING' },
-              verso: { type: 'STRING' },
-            },
-            required: ['frente', 'verso'],
-          },
-        },
-      },
+      model: MODELO_GROQ,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
     }),
   });
 
   if (!resposta.ok) {
     const textoErro = await resposta.text();
-    throw new Error(`Erro na API do Gemini (${resposta.status}): ${textoErro.slice(0, 200)}`);
+    throw new Error(`Erro na API do Groq (${resposta.status}): ${textoErro.slice(0, 200)}`);
   }
 
   const json = await resposta.json();
-  const texto = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const texto = json?.choices?.[0]?.message?.content;
   if (!texto) return [];
 
-  let itens: unknown;
+  let corpo: unknown;
   try {
-    itens = JSON.parse(texto);
+    corpo = JSON.parse(texto);
   } catch {
     return [];
   }
-  if (!Array.isArray(itens)) return [];
+  const itens = Array.isArray((corpo as { flashcards?: unknown })?.flashcards)
+    ? (corpo as { flashcards: unknown[] }).flashcards
+    : [];
 
   return itens
     .filter(
       (item): item is Flashcard =>
         !!item &&
-        typeof item.frente === 'string' &&
-        item.frente.trim().length > 0 &&
-        typeof item.verso === 'string' &&
-        item.verso.trim().length > 0,
+        typeof (item as Flashcard).frente === 'string' &&
+        (item as Flashcard).frente.trim().length > 0 &&
+        typeof (item as Flashcard).verso === 'string' &&
+        (item as Flashcard).verso.trim().length > 0,
     )
     .slice(0, quantidade)
     .map((item) => ({ frente: item.frente.trim(), verso: item.verso.trim() }));
