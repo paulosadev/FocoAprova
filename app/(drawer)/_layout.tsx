@@ -35,11 +35,8 @@ export default function DrawerLayout() {
         }}
       >
         <Drawer.Screen name="index" options={{ title: 'Início' }} />
-        <Drawer.Screen name="timer" options={{ title: 'Timer' }} />
-        <Drawer.Screen name="cronograma" options={{ title: 'Cronograma' }} />
-        <Drawer.Screen name="questoes" options={{ title: 'Questões' }} />
-        <Drawer.Screen name="flashcards" options={{ title: 'Flashcards' }} />
-        <Drawer.Screen name="simulado" options={{ title: 'Simulado' }} />
+        <Drawer.Screen name="estudar" options={{ title: 'Estudar', headerShown: false }} />
+        <Drawer.Screen name="revisar" options={{ title: 'Revisar', headerShown: false }} />
         <Drawer.Screen name="progresso" options={{ title: 'Progresso' }} />
         <Drawer.Screen
           name="perfil"

@@ -4,6 +4,7 @@ import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
   SpaceGrotesk_600SemiBold,
@@ -15,6 +16,7 @@ import { PreferenciasProvider } from '../src/context/PreferenciasContext';
 import LoginScreen from '../src/screens/LoginScreen';
 import ObjetivoScreen from '../src/screens/ObjetivoScreen';
 import SplashInicial from '../src/components/SplashInicial';
+import ToastHost from '../src/components/Toast';
 import { garantirPermissaoNotificacao } from '../src/lib/notificacoes';
 
 // mais cedo possível (antes de qualquer render): evita o flash cinza do
@@ -78,6 +80,7 @@ function Conteudo() {
           <ObjetivoScreen />
         </View>
       )}
+      <ToastHost />
     </View>
   );
 }
@@ -94,15 +97,17 @@ function Portao() {
 
 export default function RootLayout() {
   return (
-    <KeyboardProvider>
-      <ThemeProvider>
-        <PreferenciasProvider>
-          <AuthProvider>
-            <Portao />
-          </AuthProvider>
-        </PreferenciasProvider>
-      </ThemeProvider>
-    </KeyboardProvider>
+    <SafeAreaProvider>
+      <KeyboardProvider>
+        <ThemeProvider>
+          <PreferenciasProvider>
+            <AuthProvider>
+              <Portao />
+            </AuthProvider>
+          </PreferenciasProvider>
+        </ThemeProvider>
+      </KeyboardProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -11,6 +11,7 @@ export const coresEscuras = {
   destaque: '#5b9fe0',
   destaqueTexto: '#042c53',
   ambar: '#efaf3f',
+  ambarTexto: '#2b1d02',
   perigo: '#e07a6f',
   sucesso: '#5bc48a',
 };
@@ -26,6 +27,7 @@ export const coresClaras = {
   destaque: '#185fa5',
   destaqueTexto: '#eaf3ff',
   ambar: '#9c6a13',
+  ambarTexto: '#fff6e8',
   perigo: '#a32d2d',
   sucesso: '#1f7a4d',
 };

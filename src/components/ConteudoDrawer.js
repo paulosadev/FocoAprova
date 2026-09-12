@@ -13,17 +13,12 @@ const SECOES = [
   },
   {
     titulo: 'Estudar',
-    itens: [
-      { rota: '/timer', rotulo: 'Timer', icone: 'timer-outline' },
-      { rota: '/cronograma', rotulo: 'Cronograma', icone: 'calendar-outline' },
-      { rota: '/simulado', rotulo: 'Simulado', icone: 'stopwatch-outline' },
-    ],
+    itens: [{ rota: '/estudar', rotulo: 'Estudar', icone: 'timer-outline' }],
   },
   {
     titulo: 'Acompanhar',
     itens: [
-      { rota: '/questoes', rotulo: 'Questões', icone: 'help-circle-outline' },
-      { rota: '/flashcards', rotulo: 'Flashcards', icone: 'albums-outline' },
+      { rota: '/revisar', rotulo: 'Revisar', icone: 'albums-outline' },
       { rota: '/progresso', rotulo: 'Progresso', icone: 'stats-chart-outline' },
     ],
   },

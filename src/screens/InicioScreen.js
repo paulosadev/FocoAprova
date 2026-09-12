@@ -184,16 +184,20 @@ export default function InicioScreen() {
           ))}
           {anotacoesPendentes.length > 5 && (
             <Text style={styles.maisTexto}>
-              +{anotacoesPendentes.length - 5} outra(s) — veja tudo na aba Questões
+              +{anotacoesPendentes.length - 5} outra(s) — veja tudo em Revisar → Questões
             </Text>
           )}
         </Cartao>
 
         <View style={styles.linhaAtalhos}>
-          <Botao titulo="Iniciar Timer" onPress={() => router.push('/timer')} style={{ flex: 1 }} />
+          <Botao
+            titulo="Iniciar Timer"
+            onPress={() => router.push('/estudar?aba=timer')}
+            style={{ flex: 1 }}
+          />
           <Botao
             titulo="Simulado"
-            onPress={() => router.push('/simulado')}
+            onPress={() => router.push('/estudar?aba=simulado')}
             variante="secundario"
             style={{ flex: 1 }}
           />

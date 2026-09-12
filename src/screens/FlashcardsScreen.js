@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Keyboard } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from 'expo-router';
@@ -10,6 +11,7 @@ import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
 import ModoEstudoFlashcards from '../components/ModoEstudoFlashcards';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
+import { mostrarToast } from '../lib/toast';
 
 const INTERVALOS_REVISAO = [1, 3, 7, 14, 30];
 const LIMITE_DIARIO_IA = 10;
@@ -62,6 +64,7 @@ export default function FlashcardsScreen() {
   async function salvarCartao() {
     if (!frente.trim() || !verso.trim()) return;
     const disc = disciplinas.find((d) => d.id === disciplinaSelecionada);
+    const eraEdicao = !!editandoId;
 
     setCarregando(true);
     const { error } = editandoId
@@ -89,6 +92,7 @@ export default function FlashcardsScreen() {
     }
     cancelarEdicao();
     Keyboard.dismiss();
+    mostrarToast(eraEdicao ? 'Alterações salvas' : 'Flashcard salvo');
     carregarDados();
   }
 
@@ -190,11 +194,11 @@ export default function FlashcardsScreen() {
     }
 
     const criados = data?.criados ?? 0;
-    Alert.alert(
-      'Prontinho!',
+    mostrarToast(
       criados > 0
-        ? `${criados} flashcard${criados === 1 ? '' : 's'} gerado${criados === 1 ? '' : 's'} para ${disc.nome}.`
-        : 'Nenhum flashcard foi gerado. Tente reformular o assunto.',
+        ? `${criados} flashcard${criados === 1 ? '' : 's'} gerado${criados === 1 ? '' : 's'} para ${disc.nome}`
+        : 'Nenhum flashcard foi gerado — tente reformular o assunto',
+      criados > 0 ? 'sucesso' : 'erro',
     );
     setAssuntoIA('');
     carregarDados();
@@ -378,7 +382,13 @@ export default function FlashcardsScreen() {
             <Text style={styles.vazio}>Nenhum cartão cadastrado ainda.</Text>
           )}
           {cartoes.map((item) => (
-            <View key={item.id} style={styles.itemAnotacao}>
+            <Animated.View
+              key={item.id}
+              style={styles.itemAnotacao}
+              entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
+              exiting={FadeOut.duration(160).reduceMotion(ReduceMotion.System)}
+              layout={LinearTransition.duration(200).reduceMotion(ReduceMotion.System)}
+            >
               <Text style={styles.metaAnotacao}>
                 {item.disciplina_nome || 'Sem disciplina'} · próxima revisão{' '}
                 {dataISOParaBR(item.proxima_revisao)}
@@ -392,7 +402,7 @@ export default function FlashcardsScreen() {
                   <Text style={styles.acaoExcluir}>Excluir</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
           ))}
         </Cartao>
       </KeyboardAwareScrollView>
