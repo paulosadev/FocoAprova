@@ -1,0 +1,43 @@
+# Controla o que sobe pro EAS Build (separado do .gitignore de propósito:
+# mudar o .gitignore muda o fingerprint do app, isso aqui não).
+
+node_modules/
+.expo/
+dist/
+web-build/
+
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+.metro-health-check*
+
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+.DS_Store
+*.pem
+
+.env
+.env*.local
+
+*.tsbuildinfo
+
+app-example
+
+/ios
+/android
+
+# symlinks de skills instaladas (npx skills add) — o empacotador do EAS
+# não consegue recriar esses links simbólicos no Windows
+.agents/
+.claude/
+skills-lock.json
+
+# cache local do Supabase CLI
+supabase/.temp/
