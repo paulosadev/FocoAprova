@@ -8,7 +8,7 @@ export const coresEscuras = {
   texto: '#e4edf7',
   textoSecundario: '#93aac2',
   textoFraco: '#64798e',
-  destaque: '#5b9fe0',
+  destaque: '#9bcbff',
   destaqueTexto: '#042c53',
   ambar: '#efaf3f',
   ambarTexto: '#2b1d02',
