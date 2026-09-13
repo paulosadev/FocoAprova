@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, StyleSheet, Text, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Modal, View, StyleSheet, Text, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -60,8 +60,16 @@ export default function ModalAssuntoEstudado({ visivel, onPular, onSalvar }) {
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onPular}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <Animated.View style={[styles.fundo, estiloFundo]}>
+      {/* fundo e caixa são IRMÃOS, não um dentro do outro — opacidade de View
+          em RN é de grupo: a caixa dentro do fundo (que anima só até 0.5)
+          herdaria esse teto e nunca ficaria opaca, deixando o conteúdo por
+          trás vazar (mesma causa do bug corrigido no SeletorLista). */}
+      <View style={styles.raiz}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <Animated.View style={[styles.fundo, estiloFundo]} />
+        </TouchableWithoutFeedback>
+
+        <View style={styles.ancoraCaixa} pointerEvents="box-none">
           <TouchableWithoutFeedback>
             <Animated.View style={[styles.caixa, estiloCaixa]}>
               <Text style={styles.titulo}>O que você estudou?</Text>
@@ -79,17 +87,21 @@ export default function ModalAssuntoEstudado({ visivel, onPular, onSalvar }) {
               </Animated.View>
             </Animated.View>
           </TouchableWithoutFeedback>
-        </Animated.View>
-      </TouchableWithoutFeedback>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 function criarEstilos(cores) {
   return StyleSheet.create({
+    raiz: { flex: 1 },
     fundo: {
-      flex: 1,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: '#000',
+    },
+    ancoraCaixa: {
+      flex: 1,
       justifyContent: 'center',
       padding: 24,
     },

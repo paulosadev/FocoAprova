@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
+import Cabecalho from '../components/Cabecalho';
 import ModalAssuntoEstudado from '../components/ModalAssuntoEstudado';
 import { dataLocalISO, diasRestantes } from '../lib/data';
 import { fraseDoDia } from '../lib/frases';
@@ -110,7 +111,8 @@ export default function InicioScreen() {
   }
 
   return (
-    <>
+    <View style={styles.flex}>
+      <Cabecalho titulo="Início" />
       <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
         <Text style={styles.saudacao}>Olá{profile?.nome ? `, ${profile.nome}` : ''}!</Text>
 
@@ -208,7 +210,7 @@ export default function InicioScreen() {
         onPular={pularModal}
         onSalvar={salvarModal}
       />
-    </>
+    </View>
   );
 }
 

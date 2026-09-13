@@ -14,6 +14,9 @@ import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
+import SeletorData from '../components/SeletorData';
+import { dataLocalISO } from '../lib/data';
+import { mensagemErro } from '../lib/erros';
 
 const CATEGORIAS = [
   { valor: 'concurso', rotulo: 'Concurso', placeholder: 'Ex: PMMA, Banco do Brasil, TJ-SP...' },
@@ -29,6 +32,8 @@ export default function ObjetivoScreen() {
   const { atualizarPerfil } = useAuth();
   const [categoria, setCategoria] = useState(null);
   const [descricao, setDescricao] = useState('');
+  const [metaDiaria, setMetaDiaria] = useState('100');
+  const [dataProva, setDataProva] = useState(null);
   const [carregando, setCarregando] = useState(false);
 
   const categoriaAtual = CATEGORIAS.find((c) => c.valor === categoria);
@@ -42,10 +47,12 @@ export default function ObjetivoScreen() {
     const { error } = await atualizarPerfil({
       objetivo_categoria: categoria,
       objetivo_descricao: descricao.trim(),
+      meta_diaria: Math.max(Number(metaDiaria) || 1, 1),
+      data_prova: dataProva ? dataLocalISO(dataProva) : null,
       objetivo_perguntado: true,
     });
     setCarregando(false);
-    if (error) Alert.alert('Erro', error.message);
+    if (error) Alert.alert('Erro', mensagemErro(error));
   }
 
   async function pular() {
@@ -84,16 +91,41 @@ export default function ObjetivoScreen() {
                 value={descricao}
                 onChangeText={setDescricao}
                 returnKeyType="done"
-                onSubmitEditing={salvar}
               />
             )}
+          </Cartao>
 
-            <Botao
-              titulo={carregando ? 'Salvando...' : 'Continuar'}
-              onPress={salvar}
-              disabled={carregando}
+          <Cartao>
+            <Text style={styles.tituloCartao}>Meta diária de questões</Text>
+            <Text style={styles.explicacao}>Você pode mudar isso depois em Configurações.</Text>
+            <CampoTexto
+              keyboardType="number-pad"
+              returnKeyType="done"
+              value={metaDiaria}
+              onChangeText={setMetaDiaria}
+              style={{ marginBottom: 0 }}
             />
           </Cartao>
+
+          <Cartao>
+            <Text style={styles.tituloCartao}>Data da prova (opcional)</Text>
+            <Text style={styles.explicacao}>
+              Se já souber a data, a gente mostra a contagem regressiva na Início.
+            </Text>
+            <SeletorData
+              placeholder="Escolher data"
+              valor={dataProva}
+              onAlterar={setDataProva}
+              minimo={new Date()}
+              maximo={new Date(2100, 0, 1)}
+            />
+          </Cartao>
+
+          <Botao
+            titulo={carregando ? 'Salvando...' : 'Continuar'}
+            onPress={salvar}
+            disabled={carregando}
+          />
 
           <TouchableOpacity onPress={pular}>
             <Text style={styles.link}>Prefiro não dizer agora</Text>
@@ -134,5 +166,14 @@ function criarEstilos(cores) {
     textoChip: { fontSize: 13, color: cores.textoSecundario },
     textoChipAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
     link: { textAlign: 'center', color: cores.textoFraco, marginTop: 18, fontSize: 13 },
+    tituloCartao: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: cores.textoSecundario,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 4,
+    },
+    explicacao: { fontSize: 12, color: cores.textoFraco, marginBottom: 10 },
   });
 }

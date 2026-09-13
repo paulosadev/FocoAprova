@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
@@ -6,7 +7,11 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
 import { usePreferencias } from '../context/PreferenciasContext';
+import { supabase } from '../supabaseClient';
+import { mensagemErro } from '../lib/erros';
 import Cartao from '../components/Cartao';
+import Botao from '../components/Botao';
+import CampoTexto from '../components/CampoTexto';
 
 const URL_SUGESTOES = 'https://forms.gle/vdpSEC1AW84Noayn8';
 
@@ -21,9 +26,21 @@ const versao = Constants.expoConfig?.version ?? '1.0.0';
 export default function ConfiguracoesScreen() {
   const { cores, modo, setModo } = useTema();
   const styles = criarEstilos(cores);
-  const { sair } = useAuth();
+  const { sair, profile, atualizarPerfil } = useAuth();
   const { somAtivado, setSomAtivado } = usePreferencias();
   const router = useRouter();
+
+  const [metaDiaria, setMetaDiaria] = useState(String(profile?.meta_diaria || 100));
+  const [salvandoMeta, setSalvandoMeta] = useState(false);
+  const [excluindoConta, setExcluindoConta] = useState(false);
+
+  async function salvarMeta() {
+    const valor = Math.max(Number(metaDiaria) || 1, 1);
+    setSalvandoMeta(true);
+    const { error } = await atualizarPerfil({ meta_diaria: valor });
+    setSalvandoMeta(false);
+    if (error) Alert.alert('Erro ao salvar meta', mensagemErro(error));
+  }
 
   function abrirSugestoes() {
     Linking.openURL(URL_SUGESTOES).catch(() => {
@@ -56,7 +73,7 @@ export default function ConfiguracoesScreen() {
         { text: 'Reiniciar', onPress: () => Updates.reloadAsync() },
       ]);
     } catch (erro) {
-      Alert.alert('Não deu pra verificar', String(erro?.message ?? erro));
+      Alert.alert('Não deu pra verificar', mensagemErro(erro, String(erro)));
     }
   }
 
@@ -65,6 +82,28 @@ export default function ConfiguracoesScreen() {
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Sair', style: 'destructive', onPress: () => sair() },
     ]);
+  }
+
+  function confirmarExclusao() {
+    Alert.alert(
+      'Excluir minha conta',
+      'Isso apaga permanentemente seu cadastro, disciplinas, sessões, questões, simulados, flashcards e anotações. Essa ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: excluirConta },
+      ],
+    );
+  }
+
+  async function excluirConta() {
+    setExcluindoConta(true);
+    const { error } = await supabase.functions.invoke('excluir-conta');
+    setExcluindoConta(false);
+    if (error) {
+      Alert.alert('Não foi possível excluir', mensagemErro(error));
+      return;
+    }
+    await sair();
   }
 
   return (
@@ -84,6 +123,26 @@ export default function ConfiguracoesScreen() {
               </Text>
             </TouchableOpacity>
           ))}
+        </View>
+      </Cartao>
+
+      {/* Meta diária de questões */}
+      <Cartao>
+        <Text style={styles.tituloCartao}>Meta diária de questões</Text>
+        <View style={styles.linhaMeta}>
+          <CampoTexto
+            style={styles.campoMeta}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            value={metaDiaria}
+            onChangeText={setMetaDiaria}
+            onSubmitEditing={salvarMeta}
+          />
+          <Botao
+            titulo={salvandoMeta ? 'Salvando...' : 'Salvar'}
+            onPress={salvarMeta}
+            variante="secundario"
+          />
         </View>
       </Cartao>
 
@@ -108,6 +167,11 @@ export default function ConfiguracoesScreen() {
       <Cartao>
         <TouchableOpacity style={[styles.linhaLink, styles.comBorda]} onPress={() => router.push('/ajuda')}>
           <Text style={styles.linkTexto}>Ajuda / Como usar</Text>
+          <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.linhaLink, styles.comBorda]} onPress={() => router.push('/termos')}>
+          <Text style={styles.linkTexto}>Termos de Uso</Text>
           <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
         </TouchableOpacity>
 
@@ -136,22 +200,23 @@ export default function ConfiguracoesScreen() {
 
         <TouchableOpacity
           style={[styles.linhaLink, styles.comBorda]}
-          onPress={() => router.push('/trocar-senha')}
+          onPress={() => router.push('/perfil?editar=1')}
         >
-          <Text style={styles.linkTexto}>Trocar senha</Text>
+          <Text style={styles.linkTexto}>Editar perfil</Text>
           <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.linhaLink, styles.comBorda]}
-          onPress={() => router.push('/trocar-email')}
+          onPress={confirmarSaida}
         >
-          <Text style={styles.linkTexto}>Trocar e-mail</Text>
-          <Ionicons name="chevron-forward" size={18} color={cores.textoFraco} />
+          <Text style={[styles.linkTexto, { color: cores.perigo }]}>Sair da conta</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linhaLink} onPress={confirmarSaida}>
-          <Text style={[styles.linkTexto, { color: cores.perigo }]}>Sair da conta</Text>
+        <TouchableOpacity style={styles.linhaLink} onPress={confirmarExclusao} disabled={excluindoConta}>
+          <Text style={[styles.linkTexto, { color: cores.perigo }]}>
+            {excluindoConta ? 'Excluindo...' : 'Excluir minha conta'}
+          </Text>
         </TouchableOpacity>
       </Cartao>
     </ScrollView>
@@ -183,6 +248,9 @@ function criarEstilos(cores) {
     chipAtivo: { backgroundColor: cores.destaque, borderColor: cores.destaque },
     textoChip: { fontSize: 13, color: cores.textoSecundario },
     textoChipAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
+
+    linhaMeta: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+    campoMeta: { flex: 1, marginBottom: 0 },
 
     linhaItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     itemInfo: { flex: 1 },

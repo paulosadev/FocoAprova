@@ -5,6 +5,20 @@ import Cartao from '../components/Cartao';
 
 const SECOES = [
   {
+    titulo: 'Navegação',
+    itens: [
+      'A barra de baixo leva direto pra Início, Revisar, Progresso e Perfil.',
+      'O botão âmbar no meio ("Estudar") abre o Timer, Cronograma e Simulado — a aba fica selecionada ali dentro.',
+    ],
+  },
+  {
+    titulo: 'Cadastro',
+    itens: [
+      'Nome, sobrenome, data de nascimento, país/estado/cidade (estado e cidade vêm da lista oficial do IBGE) e e-mail/senha.',
+      'É preciso aceitar os Termos de Uso pra concluir o cadastro — dá pra ler o conteúdo completo sem sair da tela.',
+    ],
+  },
+  {
     titulo: 'Início',
     itens: [
       'Contagem regressiva para a data da prova.',
@@ -31,7 +45,7 @@ const SECOES = [
     titulo: 'Questões',
     itens: [
       'Registre quantas questões resolveu e quantas acertou — o app calcula o % de acerto por matéria.',
-      'Defina uma meta diária de questões e acompanhe o progresso do dia.',
+      'A meta diária de questões aparece aqui só como acompanhamento; pra mudar o número, vá em Configurações.',
       'Anote erros por assunto; eles voltam para revisão em intervalos crescentes (1, 3, 7, 14 e 30 dias).',
     ],
   },
@@ -45,23 +59,31 @@ const SECOES = [
   {
     titulo: 'Progresso',
     itens: [
-      'Sequência de dias estudados seguidos.',
-      'Total de horas de estudo e horas na semana.',
-      'Desempenho por matéria no dia a dia e comparação dos últimos simulados.',
+      'Sequência de dias estudados seguidos, total de horas e horas na semana.',
+      '"Acerto por matéria" vem ordenado da que mais precisa de atenção pra a mais consolidada, com um aviso pras que estão abaixo de 70%.',
+      '"Últimos simulados por matéria" compara a evolução de cada matéria simulado a simulado, do mais antigo ao mais recente.',
     ],
   },
   {
     titulo: 'Flashcards',
     itens: [
-      'Crie cartões com frente e verso, agrupados por disciplina.',
+      'Criação Manual ou Gerar com IA ficam juntas num só card — escolha o modo na pílula do topo.',
       'Modo de estudo um cartão por vez; acertos aumentam o intervalo até a próxima revisão, erros voltam para o início.',
     ],
   },
   {
     titulo: 'Perfil',
     itens: [
-      'Seus dados pessoais, o objetivo de estudo e a data da prova.',
-      'A engrenagem no canto abre estas Configurações.',
+      'Mostra nome, idade (calculada pela data de nascimento), cidade e estado, e o nome/data da prova.',
+      'Editar os dados só é possível a partir de Configurações → Editar perfil.',
+    ],
+  },
+  {
+    titulo: 'Configurações',
+    itens: [
+      'Aparência (claro/escuro/sistema) e meta diária de questões ficam aqui.',
+      '"Editar perfil" abre o Perfil já em modo de edição — trocar senha e trocar e-mail também ficam dentro dessa tela.',
+      '"Excluir minha conta" apaga tudo permanentemente: disciplinas, sessões, questões, simulados, flashcards, anotações e o cadastro.',
     ],
   },
 ];

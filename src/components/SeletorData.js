@@ -4,6 +4,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { raio } from '../theme';
 import { useTema } from '../context/ThemeContext';
+import Botao from './Botao';
 
 function formatarBR(data) {
   if (!data) return '';
@@ -14,7 +15,15 @@ function formatarBR(data) {
 
 // seletor de data com o calendário nativo (mesma lib do seletor de horário),
 // sem digitação manual
-export default function SeletorData({ rotulo, valor, onAlterar, minimo, maximo, placeholder }) {
+export default function SeletorData({
+  rotulo,
+  obrigatorio,
+  valor,
+  onAlterar,
+  minimo,
+  maximo,
+  placeholder,
+}) {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   const [abertoIOS, setAbertoIOS] = useState(false);
@@ -25,6 +34,7 @@ export default function SeletorData({ rotulo, valor, onAlterar, minimo, maximo, 
       DateTimePickerAndroid.open({
         value: base,
         mode: 'date',
+        locale: 'pt-BR',
         minimumDate: minimo,
         maximumDate: maximo,
         onChange: (evento, data) => {
@@ -38,7 +48,12 @@ export default function SeletorData({ rotulo, valor, onAlterar, minimo, maximo, 
 
   return (
     <View style={styles.grupo}>
-      {!!rotulo && <Text style={styles.rotulo}>{rotulo}</Text>}
+      {!!rotulo && (
+        <Text style={styles.rotulo}>
+          {rotulo}
+          {obrigatorio ? <Text style={{ color: cores.perigo }}> *</Text> : null}
+        </Text>
+      )}
       <TouchableOpacity style={styles.campo} onPress={abrir} activeOpacity={0.7}>
         <Text style={[styles.valor, !valor && styles.placeholder]}>
           {valor ? formatarBR(valor) : placeholder || 'Escolher data'}
@@ -47,16 +62,25 @@ export default function SeletorData({ rotulo, valor, onAlterar, minimo, maximo, 
       </TouchableOpacity>
 
       {Platform.OS === 'ios' && abertoIOS && (
-        <DateTimePicker
-          value={base}
-          mode="date"
-          display="spinner"
-          minimumDate={minimo}
-          maximumDate={maximo}
-          onChange={(evento, data) => {
-            if (data) onAlterar(data);
-          }}
-        />
+        <>
+          <DateTimePicker
+            value={base}
+            mode="date"
+            display="spinner"
+            locale="pt-BR"
+            minimumDate={minimo}
+            maximumDate={maximo}
+            onChange={(evento, data) => {
+              if (data) onAlterar(data);
+            }}
+          />
+          <Botao
+            titulo="OK"
+            onPress={() => setAbertoIOS(false)}
+            variante="secundario"
+            style={styles.botaoOk}
+          />
+        </>
       )}
     </View>
   );
@@ -84,5 +108,6 @@ function criarEstilos(cores) {
     },
     valor: { fontSize: 15, color: cores.texto },
     placeholder: { color: cores.textoFraco },
+    botaoOk: { marginTop: 8 },
   });
 }

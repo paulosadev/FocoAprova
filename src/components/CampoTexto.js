@@ -2,12 +2,17 @@ import { TextInput, View, Text, StyleSheet } from 'react-native';
 import { raio } from '../theme';
 import { useTema } from '../context/ThemeContext';
 
-export default function CampoTexto({ rotulo, style, inputStyle, ...props }) {
+export default function CampoTexto({ rotulo, obrigatorio, style, inputStyle, ...props }) {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   return (
     <View style={[styles.grupo, style]}>
-      {rotulo ? <Text style={styles.rotulo}>{rotulo}</Text> : null}
+      {rotulo ? (
+        <Text style={styles.rotulo}>
+          {rotulo}
+          {obrigatorio ? <Text style={{ color: cores.perigo }}> *</Text> : null}
+        </Text>
+      ) : null}
       <TextInput
         placeholderTextColor={cores.textoFraco}
         style={[styles.input, inputStyle]}

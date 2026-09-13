@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback } fro
 import { router } from 'expo-router';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '../supabaseClient';
+import { mensagemErro } from '../lib/erros';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
@@ -52,7 +53,7 @@ export default function TrocarSenhaScreen() {
     Keyboard.dismiss();
 
     if (error) {
-      Alert.alert('Não foi possível trocar', error.message);
+      Alert.alert('Não foi possível trocar', mensagemErro(error));
       return;
     }
     Alert.alert('Senha atualizada!', 'Sua senha foi alterada com sucesso.', [

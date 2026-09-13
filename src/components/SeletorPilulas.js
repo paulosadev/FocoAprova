@@ -15,9 +15,16 @@ const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 // pílula âmbar "levantada" desliza atrás da aba ativa. É um toque discreto
 // (não um gesto contínuo), então a faixa anima com timing, não spring — e a
 // TROCA DE CONTEÚDO das abas em si não anima (ver EstudarScreen/RevisarScreen).
-export default function SeletorPilulas({ abas, ativa, onSelecionar }) {
+export default function SeletorPilulas({
+  abas,
+  ativa,
+  onSelecionar,
+  corIndicador = 'ambar',
+  corTextoAtivo = 'ambarTexto',
+  style,
+}) {
   const { cores } = useTema();
-  const styles = criarEstilos(cores);
+  const styles = criarEstilos(cores, cores[corIndicador], cores[corTextoAtivo]);
   const layoutsRef = useRef({});
   const reduzMovimento = useReducedMotion();
 
@@ -54,7 +61,7 @@ export default function SeletorPilulas({ abas, ativa, onSelecionar }) {
   }));
 
   return (
-    <View style={styles.trilha}>
+    <View style={[styles.trilha, style]}>
       <Animated.View style={[styles.indicador, estiloIndicador]} />
       {abas.map((aba) => {
         const ativaAgora = aba.chave === ativa;
@@ -74,7 +81,7 @@ export default function SeletorPilulas({ abas, ativa, onSelecionar }) {
   );
 }
 
-function criarEstilos(cores) {
+function criarEstilos(cores, corIndicador, corTextoAtivo) {
   return StyleSheet.create({
     trilha: {
       flexDirection: 'row',
@@ -89,8 +96,8 @@ function criarEstilos(cores) {
       bottom: 4,
       left: 0,
       borderRadius: 12,
-      backgroundColor: cores.ambar,
-      shadowColor: cores.ambar,
+      backgroundColor: corIndicador,
+      shadowColor: corIndicador,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.45,
       shadowRadius: 8,
@@ -103,6 +110,6 @@ function criarEstilos(cores) {
       justifyContent: 'center',
     },
     rotulo: { fontSize: 12.5, fontWeight: '700', color: cores.textoSecundario },
-    rotuloAtivo: { color: cores.ambarTexto },
+    rotuloAtivo: { color: corTextoAtivo },
   });
 }

@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '../supabaseClient';
 import { extrairParametros } from '../lib/auth';
+import { mensagemErro } from '../lib/erros';
 import { useTema } from '../context/ThemeContext';
 import { fontes } from '../theme';
 import CampoTexto from '../components/CampoTexto';
@@ -82,7 +83,7 @@ export default function RedefinirSenhaScreen() {
     Keyboard.dismiss();
 
     if (error) {
-      Alert.alert('Não foi possível salvar', error.message);
+      Alert.alert('Não foi possível salvar', mensagemErro(error));
       return;
     }
     Alert.alert('Senha alterada', 'Sua senha foi redefinida.', [

@@ -9,6 +9,7 @@ import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
+import { mensagemErro } from '../lib/erros';
 
 const INTERVALOS_REVISAO = [1, 3, 7, 14, 30];
 
@@ -19,7 +20,7 @@ function hojeISO() {
 export default function QuestoesScreen() {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
-  const { session, profile, recarregarPerfil } = useAuth();
+  const { session, profile } = useAuth();
 
   const [disciplinas, setDisciplinas] = useState([]);
   const [disciplinaSelecionada, setDisciplinaSelecionada] = useState(null);
@@ -28,9 +29,6 @@ export default function QuestoesScreen() {
   const [registros, setRegistros] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [editandoQuestaoId, setEditandoQuestaoId] = useState(null);
-
-  const [metaDiaria, setMetaDiaria] = useState('100');
-  const [salvandoMeta, setSalvandoMeta] = useState(false);
 
   const [disciplinaErro, setDisciplinaErro] = useState(null);
   const [assuntoErro, setAssuntoErro] = useState('');
@@ -61,8 +59,6 @@ export default function QuestoesScreen() {
       .order('created_at', { ascending: false })
       .limit(30);
     setAnotacoes(notas || []);
-
-    if (profile?.meta_diaria) setMetaDiaria(String(profile.meta_diaria));
   }
 
   async function salvarQuestao() {
@@ -97,7 +93,7 @@ export default function QuestoesScreen() {
     setCarregando(false);
 
     if (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', mensagemErro(error));
       return;
     }
     cancelarEdicaoQuestao();
@@ -126,7 +122,7 @@ export default function QuestoesScreen() {
         onPress: async () => {
           const { error } = await supabase.from('questoes').delete().eq('id', id);
           if (error) {
-            Alert.alert('Erro', error.message);
+            Alert.alert('Erro', mensagemErro(error));
             return;
           }
           if (editandoQuestaoId === id) cancelarEdicaoQuestao();
@@ -134,22 +130,6 @@ export default function QuestoesScreen() {
         },
       },
     ]);
-  }
-
-  async function salvarMeta() {
-    const valor = Math.max(Number(metaDiaria) || 1, 1);
-    setSalvandoMeta(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ meta_diaria: valor })
-      .eq('id', session.user.id);
-    setSalvandoMeta(false);
-    Keyboard.dismiss();
-    if (error) {
-      Alert.alert('Erro ao salvar meta', error.message);
-      return;
-    }
-    recarregarPerfil();
   }
 
   async function salvarAnotacao() {
@@ -176,7 +156,7 @@ export default function QuestoesScreen() {
         });
 
     if (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', mensagemErro(error));
       return;
     }
     cancelarEdicaoAnotacao();
@@ -207,7 +187,7 @@ export default function QuestoesScreen() {
         onPress: async () => {
           const { error } = await supabase.from('anotacoes_erro').delete().eq('id', id);
           if (error) {
-            Alert.alert('Erro', error.message);
+            Alert.alert('Erro', mensagemErro(error));
             return;
           }
           if (editandoAnotacaoId === id) cancelarEdicaoAnotacao();
@@ -253,7 +233,7 @@ export default function QuestoesScreen() {
   const resolvidasHoje = registros
     .filter((r) => r.data === hojeISO())
     .reduce((total, r) => total + r.resolvidas, 0);
-  const metaAtual = profile?.meta_diaria || Number(metaDiaria) || 100;
+  const metaAtual = profile?.meta_diaria || 100;
   const percentualMeta = Math.min(Math.round((resolvidasHoje / metaAtual) * 100), 100);
 
   const anotacoesPendentes = anotacoes.filter(
@@ -269,30 +249,18 @@ export default function QuestoesScreen() {
         keyboardDismissMode="on-drag"
         bottomOffset={20}
       >
-        {/* Meta diária */}
+        {/* Meta diária — só leitura aqui; editar em Configurações */}
         <Cartao>
           <Text style={styles.tituloCartao}>Meta diária de questões</Text>
-          <View style={styles.linhaMeta}>
-            <CampoTexto
-              style={styles.campoMeta}
-              keyboardType="number-pad"
-              returnKeyType="done"
-              value={metaDiaria}
-              onChangeText={setMetaDiaria}
-              onSubmitEditing={salvarMeta}
-            />
-            <Botao
-              titulo={salvandoMeta ? 'Salvando...' : 'Salvar'}
-              onPress={salvarMeta}
-              variante="secundario"
-            />
-          </View>
           <Text style={styles.textoMeta}>
             {resolvidasHoje} / {metaAtual} hoje ({percentualMeta}%)
           </Text>
           <View style={styles.barraFundo}>
             <View style={[styles.barraPreenchida, { width: `${percentualMeta}%` }]} />
           </View>
+          <Text style={styles.explicacaoMeta}>
+            Quer mudar sua meta? Vá em Configurações → Meta diária de questões.
+          </Text>
         </Cartao>
 
         {/* Registrar questões */}
@@ -471,7 +439,7 @@ export default function QuestoesScreen() {
               {!!item.nota && <Text style={styles.notaAnotacao}>{item.nota}</Text>}
               <View style={styles.linhaAcoesItem}>
                 <Botao
-                  titulo="Marquei como revisado"
+                  titulo="Revisado"
                   onPress={() => marcarRevisado(item)}
                   variante="secundario"
                   style={{ marginTop: 8, alignSelf: 'flex-start' }}
@@ -569,9 +537,8 @@ function criarEstilos(cores) {
     vazioChips: { fontSize: 12, color: cores.textoFraco },
     linhaCampos: { flexDirection: 'row', gap: 12 },
     campo: { flex: 1 },
-    linhaMeta: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
-    campoMeta: { flex: 1 },
     textoMeta: { fontSize: 13, color: cores.textoSecundario, marginBottom: 6 },
+    explicacaoMeta: { fontSize: 11.5, color: cores.textoFraco, marginTop: 8 },
     barraFundo: {
       height: 8,
       backgroundColor: cores.superficie2,

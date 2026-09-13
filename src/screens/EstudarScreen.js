@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTema } from '../context/ThemeContext';
-import CabecalhoVidro from '../components/CabecalhoVidro';
+import Cabecalho from '../components/Cabecalho';
 import SeletorPilulas from '../components/SeletorPilulas';
 import TimerScreen from './TimerScreen';
 import CronogramaScreen from './CronogramaScreen';
@@ -26,9 +26,16 @@ export default function EstudarScreen() {
     ABAS.some((a) => a.chave === abaInicial) ? abaInicial : 'timer',
   );
 
+  // agora que "estudar" é uma aba real (fica montada entre visitas), um
+  // segundo atalho da Início pro mesmo aba (ex: trocar de timer pra
+  // simulado) precisa recolocar a pílula certa mesmo sem remontar a tela
+  useEffect(() => {
+    if (ABAS.some((a) => a.chave === abaInicial)) setAba(abaInicial);
+  }, [abaInicial]);
+
   return (
     <View style={styles.flex}>
-      <CabecalhoVidro titulo="Estudar" subtitulo="Timer · Cronograma · Simulado" />
+      <Cabecalho titulo="Estudar" subtitulo="Timer · Cronograma · Simulado" />
       <View style={styles.pilulas}>
         <SeletorPilulas abas={ABAS} ativa={aba} onSelecionar={setAba} />
       </View>

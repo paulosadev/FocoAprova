@@ -5,10 +5,18 @@ import { useTema } from '../context/ThemeContext';
 
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
-export default function Botao({ titulo, onPress, variante = 'primario', disabled, style }) {
+export default function Botao({
+  titulo,
+  onPress,
+  variante = 'primario',
+  tamanho = 'padrao',
+  disabled,
+  style,
+}) {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   const ehPrimario = variante === 'primario';
+  const ehGrande = tamanho === 'grande';
   const escala = useSharedValue(1);
 
   // feedback no toque (não na soltura) — sutil, porque um botão é tocado
@@ -18,7 +26,12 @@ export default function Botao({ titulo, onPress, variante = 'primario', disabled
   return (
     <Animated.View style={[estiloAnimado, style]}>
       <Pressable
-        style={[styles.base, ehPrimario ? styles.primario : styles.secundario, disabled && styles.desabilitado]}
+        style={[
+          styles.base,
+          ehGrande && styles.grande,
+          ehPrimario ? styles.primario : styles.secundario,
+          disabled && styles.desabilitado,
+        ]}
         onPressIn={() => {
           escala.set(withTiming(0.97, { duration: 100, easing: EASE_OUT }));
         }}
@@ -44,6 +57,9 @@ function criarEstilos(cores) {
       borderRadius: raio.botao,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    grande: {
+      paddingVertical: 16,
     },
     primario: {
       backgroundColor: cores.destaque,

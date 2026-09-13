@@ -1,6 +1,11 @@
 import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { fontes } from '../theme';
 
+// fixo (não segue o tema claro/escuro do usuário) — precisa bater com a cor
+// nativa da janela travada em app/_layout.tsx (SystemUI.setBackgroundColorAsync),
+// senão dá um flash de cor errada antes do tema carregar
 const COR_FUNDO = '#0c131b';
+const COR_TEXTO = '#e4edf7';
 const { width: larguraTela, height: alturaTela } = Dimensions.get('window');
 
 // só o visual do splash — o tempo mínimo é controlado por quem renderiza
@@ -36,9 +41,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   nome: {
+    fontFamily: fontes.display,
     fontSize: 26,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 0.5,
+    color: COR_TEXTO,
+    letterSpacing: 0.4,
   },
 });

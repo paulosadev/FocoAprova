@@ -6,7 +6,11 @@ export interface Profile {
   id: string;
   nome: string | null;
   sobrenome: string | null;
+  pais: string | null;
+  estado: string | null;
+  cidade: string | null;
   data_nascimento: string | null;
+  termos_aceitos_em: string | null;
   objetivo_categoria: 'concurso' | 'faculdade' | 'ensino_medio' | 'curso' | 'outro' | null;
   objetivo_descricao: string | null;
   objetivo_perguntado: boolean;

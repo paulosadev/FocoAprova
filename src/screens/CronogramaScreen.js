@@ -9,6 +9,7 @@ import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
 import ModalAssuntoEstudado from '../components/ModalAssuntoEstudado';
 import { dataLocalISO } from '../lib/data';
+import { mensagemErro } from '../lib/erros';
 
 const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -71,7 +72,7 @@ export default function CronogramaScreen() {
     });
     setCarregando(false);
     if (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', mensagemErro(error));
       return;
     }
     setNomeNovo('');

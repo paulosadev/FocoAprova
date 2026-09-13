@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Stack, usePathname } from 'expo-router';
+import { router, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -15,6 +15,7 @@ import { ThemeProvider, useTema, type Cores } from '../src/context/ThemeContext'
 import { PreferenciasProvider } from '../src/context/PreferenciasContext';
 import LoginScreen from '../src/screens/LoginScreen';
 import ObjetivoScreen from '../src/screens/ObjetivoScreen';
+import AceitarTermosScreen from '../src/screens/AceitarTermosScreen';
 import SplashInicial from '../src/components/SplashInicial';
 import ToastHost from '../src/components/Toast';
 import { garantirPermissaoNotificacao } from '../src/lib/notificacoes';
@@ -52,13 +53,27 @@ function Conteudo() {
 
   const pronto = splashTerminou && (tetoAtingido || (!carregando && fontesProntas));
 
-  const precisaObjetivo = !!session && !!profile && !profile.objetivo_perguntado;
-  const dentroDoApp = !!session && !!profile && !precisaObjetivo;
+  // login via Google não passa pelo checkbox de aceite do cadastro por
+  // e-mail, então esse portão cobre esse caso — fica sempre antes do Objetivo
+  const precisaAceitarTermos = !!session && !!profile && !profile.termos_aceitos_em;
+  const precisaObjetivo =
+    !!session && !!profile && !precisaAceitarTermos && !profile.objetivo_perguntado;
+  const dentroDoApp = !!session && !!profile && !precisaAceitarTermos && !precisaObjetivo;
 
   // primeira entrada no app: pede permissão de notificação uma única vez
   useEffect(() => {
     if (dentroDoApp) garantirPermissaoNotificacao();
   }, [dentroDoApp]);
+
+  // a Stack fica sempre montada (ver comentário abaixo), então sem isso, sair
+  // da conta e logar de novo volta pra última tela visitada (ex: Configurações)
+  // em vez de Início — reseta a navegação sempre que uma sessão nova começa
+  const sessaoAnteriorRef = useRef(session);
+  useEffect(() => {
+    const acabouDeLogar = !sessaoAnteriorRef.current && !!session;
+    sessaoAnteriorRef.current = session;
+    if (acabouDeLogar) router.replace('/');
+  }, [session]);
 
   if (!pronto) {
     return <SplashInicial />;
@@ -73,6 +88,11 @@ function Conteudo() {
       {!session && !naRedefinicaoDeSenha && (
         <View style={StyleSheet.absoluteFill}>
           <LoginScreen />
+        </View>
+      )}
+      {precisaAceitarTermos && !naRedefinicaoDeSenha && (
+        <View style={StyleSheet.absoluteFill}>
+          <AceitarTermosScreen />
         </View>
       )}
       {precisaObjetivo && !naRedefinicaoDeSenha && (

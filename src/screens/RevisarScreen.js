@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTema } from '../context/ThemeContext';
-import CabecalhoVidro from '../components/CabecalhoVidro';
+import Cabecalho from '../components/Cabecalho';
 import SeletorPilulas from '../components/SeletorPilulas';
 import FlashcardsScreen from './FlashcardsScreen';
 import QuestoesScreen from './QuestoesScreen';
@@ -22,9 +22,13 @@ export default function RevisarScreen() {
     ABAS.some((a) => a.chave === abaInicial) ? abaInicial : 'flashcards',
   );
 
+  useEffect(() => {
+    if (ABAS.some((a) => a.chave === abaInicial)) setAba(abaInicial);
+  }, [abaInicial]);
+
   return (
     <View style={styles.flex}>
-      <CabecalhoVidro titulo="Revisar" subtitulo="Flashcards · Questões" />
+      <Cabecalho titulo="Revisar" subtitulo="Flashcards · Questões" />
       <View style={styles.pilulas}>
         <SeletorPilulas abas={ABAS} ativa={aba} onSelecionar={setAba} />
       </View>
