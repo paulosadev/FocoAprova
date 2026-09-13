@@ -1,26 +1,77 @@
 import { useEffect, useState } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Modal, View, StyleSheet, Text, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTema } from '../context/ThemeContext';
 import CampoTexto from './CampoTexto';
 import Botao from './Botao';
 
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+
 // modal exibido ao marcar uma disciplina como estudada, perguntando o assunto.
 // "Pular" marca sem anotar nada, "Salvar" marca e guarda o texto.
+//
+// Entrada: caixa em scale(0.95)+opacity, spring "sheet" (~300ms percebido);
+// fundo só em opacity. animationType do Modal fica 'none' porque somos nós
+// que animamos as duas camadas — coordenadas, na mesma "batida".
 export default function ModalAssuntoEstudado({ visivel, onPular, onSalvar }) {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   const [texto, setTexto] = useState('');
+  const [montado, setMontado] = useState(visivel);
+  const reduzMovimento = useReducedMotion();
+
+  const progresso = useSharedValue(visivel ? 1 : 0);
 
   useEffect(() => {
-    if (visivel) setTexto('');
+    if (visivel) {
+      setTexto('');
+      setMontado(true);
+      progresso.set(
+        reduzMovimento
+          ? withTiming(1, { duration: 150, easing: EASE_OUT })
+          : withSpring(1, { duration: 300, dampingRatio: 0.8 }),
+      );
+    } else {
+      progresso.set(withTiming(0, { duration: 180, easing: EASE_OUT }));
+      // some do modal nativo só depois da animação de saída terminar
+      const t = setTimeout(() => setMontado(false), 180);
+      return () => clearTimeout(t);
+    }
   }, [visivel]);
 
+  const estiloFundo = useAnimatedStyle(() => ({ opacity: progresso.get() * 0.5 }));
+  const estiloCaixa = useAnimatedStyle(() =>
+    reduzMovimento
+      ? { opacity: progresso.get() }
+      : {
+          opacity: progresso.get(),
+          transform: [{ scale: 0.95 + progresso.get() * 0.05 }],
+        },
+  );
+
+  if (!montado) return null;
+
   return (
-    <Modal visible={visivel} transparent animationType="fade" onRequestClose={onPular}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.fundo}>
+    <Modal visible transparent animationType="none" onRequestClose={onPular}>
+      {/* fundo e caixa são IRMÃOS, não um dentro do outro — opacidade de View
+          em RN é de grupo: a caixa dentro do fundo (que anima só até 0.5)
+          herdaria esse teto e nunca ficaria opaca, deixando o conteúdo por
+          trás vazar (mesma causa do bug corrigido no SeletorLista). */}
+      <View style={styles.raiz}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <Animated.View style={[styles.fundo, estiloFundo]} />
+        </TouchableWithoutFeedback>
+
+        <View style={styles.ancoraCaixa} pointerEvents="box-none">
           <TouchableWithoutFeedback>
-            <View style={styles.caixa}>
+            <Animated.View style={[styles.caixa, estiloCaixa]}>
               <Text style={styles.titulo}>O que você estudou?</Text>
               <CampoTexto
                 placeholder="Ex: Verbos irregulares"
@@ -30,23 +81,27 @@ export default function ModalAssuntoEstudado({ visivel, onPular, onSalvar }) {
                 returnKeyType="done"
                 onSubmitEditing={() => onSalvar(texto)}
               />
-              <View style={styles.linhaBotoes}>
+              <Animated.View style={styles.linhaBotoes}>
                 <Botao titulo="Pular" onPress={onPular} variante="secundario" style={{ flex: 1 }} />
                 <Botao titulo="Salvar" onPress={() => onSalvar(texto)} style={{ flex: 1 }} />
-              </View>
-            </View>
+              </Animated.View>
+            </Animated.View>
           </TouchableWithoutFeedback>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
 }
 
 function criarEstilos(cores) {
   return StyleSheet.create({
+    raiz: { flex: 1 },
     fundo: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: '#000',
+    },
+    ancoraCaixa: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'center',
       padding: 24,
     },

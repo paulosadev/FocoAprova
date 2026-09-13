@@ -2,7 +2,7 @@
   "expo": {
     "name": "FocoAprova",
     "slug": "FocoAprova",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "focoaprova",
@@ -60,7 +60,7 @@
     },
     "owner": "paulosa.ps",
     "runtimeVersion": {
-      "policy": "sdkVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/505bc3fa-1199-48db-bf1d-e0e28c88e9e5"

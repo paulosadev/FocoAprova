@@ -9,12 +9,9 @@ import Botao from '../components/Botao';
 import SeletorDuracao from '../components/SeletorDuracao';
 import ModoFoco from '../components/ModoFoco';
 import { tocarAlerta } from '../lib/som';
-import {
-  notificar,
-  pedirPermissaoNotificacao,
-  permissaoNotificacaoConcedida,
-} from '../lib/notificacoes';
+import { notificar } from '../lib/notificacoes';
 import { dataLocalISO } from '../lib/data';
+import { fontes } from '../theme';
 
 const KEEP_AWAKE_TAG = 'timer-focoaprova';
 
@@ -42,23 +39,28 @@ export default function TimerScreen() {
   const [segundos, setSegundos] = useState(50 * 60);
   const [rodando, setRodando] = useState(false);
   const [ciclosFeitos, setCiclosFeitos] = useState(0);
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(false);
   const [telaCheia, setTelaCheia] = useState(false);
 
   const intervaloRef = useRef(null);
+  const rodandoRef = useRef(rodando);
 
   useEffect(() => {
-    permissaoNotificacaoConcedida().then(setNotificacoesAtivas);
     return () => deactivateKeepAwake(KEEP_AWAKE_TAG);
   }, []);
 
   useEffect(() => {
-    // atualiza o preview com a duração do bloco atual sempre que ela muda,
-    // mas só enquanto não estiver rodando (senão atropelaria a contagem)
-    if (rodando) return;
+    rodandoRef.current = rodando;
+  }, [rodando]);
+
+  useEffect(() => {
+    // atualiza o preview com a duração do bloco atual quando ela muda ou o
+    // modo troca, mas só enquanto não estiver rodando (senão atropelaria a
+    // contagem). Não depende de `rodando` pra não disparar (e resetar o
+    // tempo) só porque o usuário pausou.
+    if (rodandoRef.current) return;
     const duracoes = { foco: focoMin, pausa: pausaMin, pausaLonga: pausaLongaMin };
     setSegundos(duracoes[modo] * 60);
-  }, [focoMin, pausaMin, pausaLongaMin, rodando, modo]);
+  }, [focoMin, pausaMin, pausaLongaMin, modo]);
 
   function iniciar() {
     setRodando(true);
@@ -77,7 +79,6 @@ export default function TimerScreen() {
 
   function pausar() {
     setRodando(false);
-    setTelaCheia(false);
     clearInterval(intervaloRef.current);
     deactivateKeepAwake(KEEP_AWAKE_TAG);
   }
@@ -122,11 +123,6 @@ export default function TimerScreen() {
     });
   }
 
-  async function alternarNotificacoes() {
-    const concedida = await pedirPermissaoNotificacao();
-    setNotificacoesAtivas(concedida);
-  }
-
   const rotulo = modo === 'foco' ? 'Foco' : modo === 'pausa' ? 'Pausa curta' : 'Pausa longa';
   const pontosPreenchidos = Array.from({ length: ciclosParaPausaLonga }).map(
     (_, i) => i < ciclosFeitos % ciclosParaPausaLonga,
@@ -167,13 +163,6 @@ export default function TimerScreen() {
               style={{ marginTop: 10 }}
             />
           )}
-
-          <Botao
-            titulo={notificacoesAtivas ? 'Notificações ativadas' : 'Ativar notificações'}
-            onPress={alternarNotificacoes}
-            variante="secundario"
-            style={{ marginTop: 10 }}
-          />
         </Cartao>
 
         <Cartao>
@@ -193,7 +182,9 @@ export default function TimerScreen() {
         rotulo={rotulo}
         display={formatar(segundos)}
         pontos={pontosPreenchidos}
+        rodando={rodando}
         onPausar={pausar}
+        onIniciar={iniciar}
         onSair={() => setTelaCheia(false)}
       />
     </View>
@@ -213,10 +204,16 @@ function criarEstilos(cores) {
       letterSpacing: 1,
       marginBottom: 6,
     },
-    display: { fontSize: 56, fontWeight: '700', color: cores.texto, marginBottom: 14 },
+    display: {
+      fontFamily: fontes.displaySemi,
+      fontSize: 58,
+      color: cores.texto,
+      marginBottom: 14,
+      fontVariant: ['tabular-nums'],
+    },
     pontos: { flexDirection: 'row', gap: 8, marginBottom: 18 },
     ponto: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: cores.borda },
-    pontoPreenchido: { backgroundColor: cores.destaque, borderColor: cores.destaque },
+    pontoPreenchido: { backgroundColor: cores.ambar, borderColor: cores.ambar },
     controles: { flexDirection: 'row', gap: 10, width: '100%' },
     tituloConfig: {
       fontSize: 12,

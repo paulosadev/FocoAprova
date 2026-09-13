@@ -42,3 +42,12 @@ app-example
 # generated native folders
 /ios
 /android
+
+# skills instaladas via "npx skills add" / plugins do Claude Code — ferramentas
+# de desenvolvimento, nunca vão pro app
+.agents/
+.claude/
+skills-lock.json
+
+# cache local do Supabase CLI
+supabase/.temp/

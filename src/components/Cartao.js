@@ -1,11 +1,13 @@
 import { View, StyleSheet } from 'react-native';
-import { espacamento, raio } from '../theme';
+import { espacamento, raio, sombra } from '../theme';
 import { useTema } from '../context/ThemeContext';
 
-export default function Cartao({ children, style }) {
+// card padrão: superfície elevada sobre o fundo, com sombra sutil pra dar
+// profundidade entre camadas (fundo -> superficie -> superficie2)
+export default function Cartao({ children, style, plano = false }) {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
-  return <View style={[styles.cartao, style]}>{children}</View>;
+  return <View style={[styles.cartao, !plano && sombra.cartao, style]}>{children}</View>;
 }
 
 function criarEstilos(cores) {

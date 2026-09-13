@@ -14,6 +14,8 @@ import ModoFoco from '../components/ModoFoco';
 import { tocarAlerta } from '../lib/som';
 import { notificar } from '../lib/notificacoes';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
+import { mensagemErro } from '../lib/erros';
+import { fontes } from '../theme';
 
 const KEEP_AWAKE_TAG = 'simulado-focoaprova';
 
@@ -41,6 +43,7 @@ export default function SimuladoScreen() {
   const [historico, setHistorico] = useState([]);
   const [editandoSimuladoId, setEditandoSimuladoId] = useState(null);
   const intervaloRef = useRef(null);
+  const rodandoRef = useRef(rodando);
 
   // Detalhamento por matéria
   const [disciplinas, setDisciplinas] = useState([]);
@@ -68,10 +71,16 @@ export default function SimuladoScreen() {
   }, []);
 
   useEffect(() => {
+    rodandoRef.current = rodando;
+  }, [rodando]);
+
+  useEffect(() => {
     // atualiza o preview sempre que a duração muda, mas só enquanto não
-    // estiver rodando (senão atropelaria a contagem em andamento)
-    if (!rodando) setSegundos(duracaoTotalMin * 60);
-  }, [duracaoTotalMin, rodando]);
+    // estiver rodando (senão atropelaria a contagem em andamento). Não
+    // depende de `rodando` pra não disparar (e resetar o tempo) só porque
+    // o usuário pausou.
+    if (!rodandoRef.current) setSegundos(duracaoTotalMin * 60);
+  }, [duracaoTotalMin]);
 
   // Mantém o detalhamento do simulado em edição sincronizado após cada recarga
   useEffect(() => {
@@ -139,7 +148,6 @@ export default function SimuladoScreen() {
 
   function pausar() {
     setRodando(false);
-    setTelaCheia(false);
     clearInterval(intervaloRef.current);
     deactivateKeepAwake(KEEP_AWAKE_TAG);
   }
@@ -156,8 +164,13 @@ export default function SimuladoScreen() {
       return;
     }
     const resolvidas = Number(resolvidasMateria) || 0;
-    const acertosNum = Math.min(Number(acertosMateria) || 0, resolvidas);
     if (resolvidas <= 0) return;
+
+    // a soma dos acertos por matéria não pode passar o total de acertos do
+    // resultado geral do simulado
+    const acertosJaAlocados = materiasAdicionadas.reduce((a, m) => a + m.acertos, 0);
+    const restanteGeral = Math.max(0, (Number(acertos) || 0) - acertosJaAlocados);
+    const acertosNum = Math.min(Number(acertosMateria) || 0, resolvidas, restanteGeral);
 
     setMateriasAdicionadas((atual) => [
       ...atual,
@@ -183,7 +196,7 @@ export default function SimuladoScreen() {
         .eq('id', editandoSimuladoId);
 
       if (error) {
-        Alert.alert('Erro', error.message);
+        Alert.alert('Erro', mensagemErro(error));
         return;
       }
       cancelarEdicaoSimulado();
@@ -205,7 +218,7 @@ export default function SimuladoScreen() {
       .single();
 
     if (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', mensagemErro(error));
       return;
     }
 
@@ -221,7 +234,7 @@ export default function SimuladoScreen() {
       if (erroMaterias) {
         Alert.alert(
           'Simulado salvo, mas houve um erro no detalhamento por matéria',
-          erroMaterias.message,
+          mensagemErro(erroMaterias),
         );
       }
     }
@@ -267,7 +280,7 @@ export default function SimuladoScreen() {
             await supabase.from('simulado_materias').delete().eq('simulado_id', id);
             const { error } = await supabase.from('simulados').delete().eq('id', id);
             if (error) {
-              Alert.alert('Erro', error.message);
+              Alert.alert('Erro', mensagemErro(error));
               return;
             }
             if (editandoSimuladoId === id) cancelarEdicaoSimulado();
@@ -296,8 +309,13 @@ export default function SimuladoScreen() {
   async function salvarEdicaoMateria() {
     const disc = disciplinas.find((d) => d.id === materiaEditDisciplina);
     const resolvidas = Number(materiaEditResolvidas) || 0;
-    const acertosNum = Math.min(Number(materiaEditAcertos) || 0, resolvidas);
     if (resolvidas <= 0) return;
+
+    const acertosJaAlocados = materiasDoSimulado
+      .filter((m) => m.id !== editandoMateriaId)
+      .reduce((a, m) => a + m.acertos, 0);
+    const restanteGeral = Math.max(0, (Number(acertos) || 0) - acertosJaAlocados);
+    const acertosNum = Math.min(Number(materiaEditAcertos) || 0, resolvidas, restanteGeral);
 
     const { error } = await supabase
       .from('simulado_materias')
@@ -309,7 +327,7 @@ export default function SimuladoScreen() {
       .eq('id', editandoMateriaId);
 
     if (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', mensagemErro(error));
       return;
     }
     cancelarEdicaoMateria();
@@ -325,7 +343,7 @@ export default function SimuladoScreen() {
         onPress: async () => {
           const { error } = await supabase.from('simulado_materias').delete().eq('id', id);
           if (error) {
-            Alert.alert('Erro', error.message);
+            Alert.alert('Erro', mensagemErro(error));
             return;
           }
           if (editandoMateriaId === id) cancelarEdicaoMateria();
@@ -458,12 +476,13 @@ export default function SimuladoScreen() {
                     value={acertosMateria}
                     onChangeText={setAcertosMateria}
                   />
-                  <Botao
-                    titulo="+ Adicionar"
-                    onPress={adicionarMateria}
-                    style={styles.botaoAdicionarMateria}
-                  />
                 </View>
+                <Botao
+                  titulo="+ Adicionar"
+                  onPress={adicionarMateria}
+                  variante="secundario"
+                  style={styles.botaoAdicionarMateria}
+                />
               </View>
 
               {materiasAdicionadas.length > 0 && (
@@ -622,7 +641,9 @@ export default function SimuladoScreen() {
         visivel={telaCheia}
         rotulo="Simulado"
         display={formatar(segundos)}
+        rodando={rodando}
         onPausar={pausar}
+        onIniciar={iniciar}
         onSair={() => setTelaCheia(false)}
       />
     </View>
@@ -643,11 +664,12 @@ function criarEstilos(cores) {
     },
     explicacao: { fontSize: 12, color: cores.textoFraco, marginBottom: 12 },
     display: {
-      fontSize: 44,
-      fontWeight: '700',
+      fontFamily: fontes.displaySemi,
+      fontSize: 46,
       color: cores.texto,
       textAlign: 'center',
       marginVertical: 14,
+      fontVariant: ['tabular-nums'],
     },
     controles: { flexDirection: 'row', gap: 10 },
     linhaCampos: { flexDirection: 'row', gap: 12 },
@@ -673,7 +695,7 @@ function criarEstilos(cores) {
     },
     linhaCamposMateria: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
     campoMateria: { flex: 1 },
-    botaoAdicionarMateria: { paddingHorizontal: 14, marginBottom: 12 },
+    botaoAdicionarMateria: { marginBottom: 12 },
     listaMateriasAdicionadas: { marginTop: 14, gap: 8 },
     cardMateriaAdicionada: {
       backgroundColor: cores.superficie2,

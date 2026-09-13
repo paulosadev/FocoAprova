@@ -1,21 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   ScrollView,
   Keyboard,
+  TouchableOpacity,
   TouchableWithoutFeedback,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { router, useLocalSearchParams } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '../context/AuthContext';
 import { useTema } from '../context/ThemeContext';
+import { fontes } from '../theme';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
+import Cabecalho from '../components/Cabecalho';
 import CampoTexto from '../components/CampoTexto';
-import { mascararDataBR, dataBRParaISO, dataISOParaBR, diasRestantes } from '../lib/data';
+import SeletorData from '../components/SeletorData';
+import SeletorLista from '../components/SeletorLista';
+import { dataLocalISO, dataISOParaBR, diasRestantes } from '../lib/data';
+import { apenasLetras } from '../lib/texto';
+import { mensagemErro } from '../lib/erros';
+import { useEstadoCidade } from '../lib/useEstadoCidade';
+
+function isoParaData(iso) {
+  return iso ? new Date(`${iso}T00:00:00`) : null;
+}
 
 const CATEGORIAS = [
   { valor: 'concurso', rotulo: 'Concurso' },
@@ -25,78 +38,93 @@ const CATEGORIAS = [
   { valor: 'outro', rotulo: 'Outro' },
 ];
 
-const MODOS_TEMA = [
-  { valor: 'light', rotulo: 'Claro' },
-  { valor: 'dark', rotulo: 'Escuro' },
-  { valor: 'system', rotulo: 'Sistema' },
-];
-
 function rotuloCategoria(valor) {
   const encontrada = CATEGORIAS.find((c) => c.valor === valor);
   return encontrada ? encontrada.rotulo : null;
 }
 
+function cidadeEstado(cidade, estado) {
+  if (cidade && estado) return `${cidade}, ${estado}`;
+  return cidade || estado || '-';
+}
+
+function calcularIdade(dataNascimentoISO) {
+  if (!dataNascimentoISO) return null;
+  const nascimento = new Date(`${dataNascimentoISO}T00:00:00`);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const aindaNaoFezAniversario =
+    hoje.getMonth() < nascimento.getMonth() ||
+    (hoje.getMonth() === nascimento.getMonth() && hoje.getDate() < nascimento.getDate());
+  if (aindaNaoFezAniversario) idade--;
+  return idade;
+}
+
 export default function PerfilScreen() {
-  const { cores, modo, setModo } = useTema();
+  const { cores } = useTema();
   const styles = criarEstilos(cores);
-  const { session, profile, atualizarPerfil, sair } = useAuth();
+  const { session, profile, atualizarPerfil } = useAuth();
+  const { editar } = useLocalSearchParams();
   const [editando, setEditando] = useState(false);
   const [carregando, setCarregando] = useState(false);
 
   const [nome, setNome] = useState('');
   const [sobrenome, setSobrenome] = useState('');
-  const [dataNascimento, setDataNascimento] = useState('');
+  const [dataNascimento, setDataNascimento] = useState(null);
   const [categoria, setCategoria] = useState(null);
   const [descricaoObjetivo, setDescricaoObjetivo] = useState('');
-  const [dataProva, setDataProva] = useState('');
+  const [dataProva, setDataProva] = useState(null);
+
+  const {
+    estados,
+    carregandoEstados,
+    estadoFallback,
+    estadoLivre,
+    setEstadoLivre,
+    estadoSelecionado,
+    selecionarEstado,
+    preencher: preencherEstadoCidade,
+    cidades,
+    carregandoCidades,
+    cidadeFallback,
+    cidade,
+    setCidade,
+  } = useEstadoCidade({ ativo: editando });
 
   function iniciarEdicao() {
     setNome(profile?.nome || '');
     setSobrenome(profile?.sobrenome || '');
-    setDataNascimento(dataISOParaBR(profile?.data_nascimento));
+    setDataNascimento(isoParaData(profile?.data_nascimento));
     setCategoria(profile?.objetivo_categoria || null);
     setDescricaoObjetivo(profile?.objetivo_descricao || '');
-    setDataProva(dataISOParaBR(profile?.data_prova));
+    setDataProva(isoParaData(profile?.data_prova));
+    preencherEstadoCidade(profile?.estado || null, profile?.cidade || '');
     setEditando(true);
   }
 
+  // veio de Configurações → "Editar perfil" (?editar=1): abre direto editando
+  useEffect(() => {
+    if (editar === '1' && !editando) iniciarEdicao();
+  }, [editar]);
+
   async function salvar() {
-    let dataNascimentoISO = null;
-    if (dataNascimento.trim()) {
-      dataNascimentoISO = dataBRParaISO(dataNascimento.trim());
-      if (!dataNascimentoISO) {
-        Alert.alert(
-          'Data de nascimento inválida',
-          'Use o formato DD/MM/AAAA, por exemplo 20/05/2001.',
-        );
-        return;
-      }
-    }
-
-    let dataProvaISO = null;
-    if (dataProva.trim()) {
-      dataProvaISO = dataBRParaISO(dataProva.trim());
-      if (!dataProvaISO) {
-        Alert.alert('Data da prova inválida', 'Use o formato DD/MM/AAAA, por exemplo 15/12/2026.');
-        return;
-      }
-    }
-
     setCarregando(true);
     const { error } = await atualizarPerfil({
       nome: nome.trim(),
       sobrenome: sobrenome.trim(),
-      data_nascimento: dataNascimentoISO,
+      data_nascimento: dataNascimento ? dataLocalISO(dataNascimento) : null,
       objetivo_categoria: categoria,
       objetivo_descricao: descricaoObjetivo.trim(),
       objetivo_perguntado: true,
-      data_prova: dataProvaISO,
+      data_prova: dataProva ? dataLocalISO(dataProva) : null,
+      estado: estadoFallback ? estadoLivre.trim() || null : estadoSelecionado?.sigla || null,
+      cidade: cidade.trim() || null,
     });
     setCarregando(false);
     Keyboard.dismiss();
 
     if (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', mensagemErro(error));
       return;
     }
     setEditando(false);
@@ -120,22 +148,76 @@ export default function PerfilScreen() {
               <Text style={styles.rotulo}>E-mail</Text>
               <Text style={styles.valor}>{session?.user?.email}</Text>
 
-              <CampoTexto rotulo="Nome" value={nome} onChangeText={setNome} returnKeyType="next" />
+              <View style={styles.linhaContaLinks}>
+                <TouchableOpacity onPress={() => router.push('/trocar-senha')} hitSlop={6}>
+                  <Text style={styles.linkConta}>Trocar senha</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/trocar-email')} hitSlop={6}>
+                  <Text style={styles.linkConta}>Trocar e-mail</Text>
+                </TouchableOpacity>
+              </View>
+
+              <CampoTexto
+                rotulo="Nome"
+                value={nome}
+                onChangeText={(t) => setNome(apenasLetras(t))}
+                returnKeyType="next"
+              />
               <CampoTexto
                 rotulo="Sobrenome"
                 value={sobrenome}
-                onChangeText={setSobrenome}
+                onChangeText={(t) => setSobrenome(apenasLetras(t))}
                 returnKeyType="next"
               />
-              <CampoTexto
+              <SeletorData
                 rotulo="Data de nascimento"
-                placeholder="DD/MM/AAAA"
-                value={dataNascimento}
-                onChangeText={(texto) => setDataNascimento(mascararDataBR(texto))}
-                keyboardType="number-pad"
-                returnKeyType="next"
-                maxLength={10}
+                placeholder="Escolher data"
+                valor={dataNascimento}
+                onAlterar={setDataNascimento}
+                minimo={new Date(1900, 0, 1)}
+                maximo={new Date()}
               />
+
+              {estadoFallback ? (
+                <CampoTexto
+                  rotulo="Estado"
+                  placeholder="UF (ex: MA)"
+                  autoCapitalize="characters"
+                  maxLength={2}
+                  value={estadoLivre}
+                  onChangeText={setEstadoLivre}
+                  returnKeyType="next"
+                />
+              ) : (
+                <SeletorLista
+                  rotulo="Estado"
+                  placeholder="Escolher estado"
+                  valorExibido={estadoSelecionado?.nome}
+                  carregando={carregandoEstados}
+                  opcoes={estados.map((e) => ({ rotulo: e.nome, valor: e.sigla }))}
+                  onSelecionar={selecionarEstado}
+                />
+              )}
+
+              {cidadeFallback || estadoFallback ? (
+                <CampoTexto
+                  rotulo="Cidade"
+                  placeholder="Sua cidade"
+                  value={cidade}
+                  onChangeText={setCidade}
+                  returnKeyType="next"
+                />
+              ) : (
+                <SeletorLista
+                  rotulo="Cidade"
+                  placeholder={estadoSelecionado ? 'Escolher cidade' : 'Escolha um estado primeiro'}
+                  valorExibido={cidade}
+                  desabilitado={!estadoSelecionado}
+                  carregando={carregandoCidades}
+                  opcoes={cidades.map((c) => ({ rotulo: c.nome, valor: c.nome }))}
+                  onSelecionar={(opcao) => setCidade(opcao.valor)}
+                />
+              )}
             </Cartao>
 
             <Cartao>
@@ -165,14 +247,12 @@ export default function PerfilScreen() {
 
             <Cartao>
               <Text style={styles.tituloCartao}>Data da prova</Text>
-              <CampoTexto
-                placeholder="DD/MM/AAAA"
-                value={dataProva}
-                onChangeText={(texto) => setDataProva(mascararDataBR(texto))}
-                keyboardType="number-pad"
-                returnKeyType="done"
-                maxLength={10}
-                onSubmitEditing={salvar}
+              <SeletorData
+                placeholder="Escolher data"
+                valor={dataProva}
+                onAlterar={setDataProva}
+                minimo={new Date(2000, 0, 1)}
+                maximo={new Date(2100, 0, 1)}
               />
             </Cartao>
 
@@ -197,9 +277,16 @@ export default function PerfilScreen() {
   }
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
-      <Text style={styles.titulo}>Perfil</Text>
-
+    <View style={styles.flex}>
+      <Cabecalho
+        titulo="Perfil"
+        direita={
+          <TouchableOpacity onPress={() => router.push('/configuracoes')} hitSlop={8}>
+            <Ionicons name="settings-outline" size={22} color={cores.textoSecundario} />
+          </TouchableOpacity>
+        }
+      />
+      <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
       {faltam !== null && (
         <Cartao style={styles.cartaoContagem}>
           <Text style={styles.numeroContagem}>
@@ -216,52 +303,33 @@ export default function PerfilScreen() {
       )}
 
       <Cartao>
-        <Text style={styles.tituloCartao}>Aparência</Text>
-        <View style={styles.linhaChips}>
-          {MODOS_TEMA.map((m) => (
-            <TouchableOpacity
-              key={m.valor}
-              style={[styles.chip, modo === m.valor && styles.chipAtivo]}
-              onPress={() => setModo(m.valor)}
-            >
-              <Text style={[styles.textoChip, modo === m.valor && styles.textoChipAtivo]}>
-                {m.rotulo}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Cartao>
-
-      <Cartao>
-        <Text style={styles.rotulo}>E-mail</Text>
-        <Text style={styles.valor}>{session?.user?.email}</Text>
-
         <Text style={styles.rotulo}>Nome</Text>
-        <Text style={styles.valor}>{profile?.nome || '-'}</Text>
-
-        <Text style={styles.rotulo}>Sobrenome</Text>
-        <Text style={styles.valor}>{profile?.sobrenome || '-'}</Text>
-
-        <Text style={styles.rotulo}>Data de nascimento</Text>
-        <Text style={styles.valor}>{dataISOParaBR(profile?.data_nascimento) || '-'}</Text>
-      </Cartao>
-
-      <Cartao>
-        <Text style={styles.tituloCartao}>O que você está estudando</Text>
         <Text style={styles.valor}>
-          {rotuloCategoria(profile?.objetivo_categoria) || 'Não informado'}
-          {profile?.objetivo_descricao ? ` — ${profile.objetivo_descricao}` : ''}
+          {[profile?.nome, profile?.sobrenome].filter(Boolean).join(' ') || '-'}
         </Text>
+
+        <Text style={styles.rotulo}>Idade</Text>
+        <Text style={styles.valor}>
+          {calcularIdade(profile?.data_nascimento) != null
+            ? `${calcularIdade(profile?.data_nascimento)} anos`
+            : '-'}
+        </Text>
+
+        <Text style={styles.rotulo}>Cidade e estado</Text>
+        <Text style={styles.valor}>{cidadeEstado(profile?.cidade, profile?.estado)}</Text>
       </Cartao>
 
       <Cartao>
-        <Text style={styles.tituloCartao}>Data da prova</Text>
+        <Text style={styles.rotulo}>Nome da prova</Text>
+        <Text style={styles.valor}>
+          {profile?.objetivo_descricao || rotuloCategoria(profile?.objetivo_categoria) || '-'}
+        </Text>
+
+        <Text style={styles.rotulo}>Data da prova</Text>
         <Text style={styles.valor}>{dataISOParaBR(profile?.data_prova) || 'Não informada'}</Text>
       </Cartao>
-
-      <Botao titulo="Editar perfil" onPress={iniciarEdicao} />
-      <Botao titulo="Sair da conta" onPress={sair} variante="secundario" style={styles.botaoSair} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -269,7 +337,12 @@ function criarEstilos(cores) {
   return StyleSheet.create({
     flex: { flex: 1, backgroundColor: cores.fundo },
     container: { padding: 16 },
-    titulo: { fontSize: 20, fontWeight: '700', color: cores.texto, marginBottom: 16 },
+    titulo: {
+      fontFamily: fontes.display,
+      fontSize: 20,
+      color: cores.texto,
+      marginBottom: 16,
+    },
     tituloCartao: {
       fontSize: 13,
       fontWeight: '700',
@@ -280,6 +353,8 @@ function criarEstilos(cores) {
     },
     rotulo: { fontSize: 11, color: cores.textoFraco, marginTop: 8, textTransform: 'uppercase' },
     valor: { fontSize: 15, color: cores.texto, marginTop: 2, marginBottom: 8 },
+    linhaContaLinks: { flexDirection: 'row', gap: 18, marginTop: 4, marginBottom: 4 },
+    linkConta: { fontSize: 12.5, color: cores.destaque, fontWeight: '600' },
     linhaChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
     chip: {
       borderWidth: 1.5,
@@ -293,9 +368,12 @@ function criarEstilos(cores) {
     textoChip: { fontSize: 13, color: cores.textoSecundario },
     textoChipAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
     linhaBotoes: { flexDirection: 'row', gap: 10, marginTop: 4 },
-    botaoSair: { marginTop: 12 },
     cartaoContagem: { alignItems: 'center' },
-    numeroContagem: { fontSize: 40, fontWeight: '700', color: cores.destaque },
+    numeroContagem: {
+      fontFamily: fontes.display,
+      fontSize: 40,
+      color: cores.destaque,
+    },
     rotuloContagem: {
       fontSize: 12,
       color: cores.textoSecundario,

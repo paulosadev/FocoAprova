@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Keyboard } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from 'expo-router';
@@ -8,10 +9,18 @@ import { useTema } from '../context/ThemeContext';
 import Cartao from '../components/Cartao';
 import Botao from '../components/Botao';
 import CampoTexto from '../components/CampoTexto';
+import SeletorPilulas from '../components/SeletorPilulas';
 import ModoEstudoFlashcards from '../components/ModoEstudoFlashcards';
 import { dataLocalISO, dataISOParaBR } from '../lib/data';
+import { mostrarToast } from '../lib/toast';
+import { mensagemErro } from '../lib/erros';
 
 const INTERVALOS_REVISAO = [1, 3, 7, 14, 30];
+const LIMITE_DIARIO_IA = 10;
+const ABAS_CRIACAO = [
+  { chave: 'manual', rotulo: 'Manual' },
+  { chave: 'ia', rotulo: 'Gerar com IA' },
+];
 
 function hojeISO() {
   return dataLocalISO();
@@ -31,6 +40,11 @@ export default function FlashcardsScreen() {
   const [editandoId, setEditandoId] = useState(null);
   const [fila, setFila] = useState(null); // null = modo de estudo fechado; array = fila em andamento
 
+  const [disciplinaIASelecionada, setDisciplinaIASelecionada] = useState(null);
+  const [assuntoIA, setAssuntoIA] = useState('');
+  const [gerandoIA, setGerandoIA] = useState(false);
+  const [modoCriacao, setModoCriacao] = useState('manual'); // 'manual' | 'ia'
+
   useFocusEffect(
     useCallback(() => {
       carregarDados();
@@ -43,6 +57,9 @@ export default function FlashcardsScreen() {
     if (disc && disc.length > 0 && !disciplinaSelecionada) {
       setDisciplinaSelecionada(disc[0].id);
     }
+    if (disc && disc.length > 0 && !disciplinaIASelecionada) {
+      setDisciplinaIASelecionada(disc[0].id);
+    }
 
     const { data: cards } = await supabase
       .from('flashcards')
@@ -54,6 +71,7 @@ export default function FlashcardsScreen() {
   async function salvarCartao() {
     if (!frente.trim() || !verso.trim()) return;
     const disc = disciplinas.find((d) => d.id === disciplinaSelecionada);
+    const eraEdicao = !!editandoId;
 
     setCarregando(true);
     const { error } = editandoId
@@ -76,11 +94,12 @@ export default function FlashcardsScreen() {
     setCarregando(false);
 
     if (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', mensagemErro(error));
       return;
     }
     cancelarEdicao();
     Keyboard.dismiss();
+    mostrarToast(eraEdicao ? 'Alterações salvas' : 'Flashcard salvo');
     carregarDados();
   }
 
@@ -107,7 +126,7 @@ export default function FlashcardsScreen() {
         onPress: async () => {
           const { error } = await supabase.from('flashcards').delete().eq('id', id);
           if (error) {
-            Alert.alert('Erro', error.message);
+            Alert.alert('Erro', mensagemErro(error));
             return;
           }
           if (editandoId === id) cancelarEdicao();
@@ -134,6 +153,64 @@ export default function FlashcardsScreen() {
     carregarDados();
   }
 
+  async function extrairMensagemErroFunction(error) {
+    try {
+      if (error?.context?.json) {
+        const corpo = await error.context.json();
+        if (corpo?.error) return corpo.error;
+      }
+    } catch {
+      // mantém a mensagem padrão abaixo
+    }
+    return mensagemErro(error, 'Tente novamente em instantes.');
+  }
+
+  async function gerarFlashcardsIA() {
+    const disc = disciplinas.find((d) => d.id === disciplinaIASelecionada);
+    if (!disc) {
+      Alert.alert('Escolha uma disciplina', 'Selecione a disciplina antes de gerar.');
+      return;
+    }
+    if (!assuntoIA.trim()) {
+      Alert.alert('Informe o assunto', 'Digite o assunto para a IA gerar os flashcards.');
+      return;
+    }
+    if (restanteIA <= 0) {
+      Alert.alert(
+        'Limite atingido',
+        `Você já gerou o máximo de ${LIMITE_DIARIO_IA} flashcards por IA para ${disc.nome} hoje.`,
+      );
+      return;
+    }
+
+    Keyboard.dismiss();
+    setGerandoIA(true);
+    const { data, error } = await supabase.functions.invoke('gerar-flashcards', {
+      body: {
+        disciplina_nome: disc.nome,
+        assunto: assuntoIA.trim(),
+        data_local: hojeISO(),
+      },
+    });
+    setGerandoIA(false);
+
+    if (error) {
+      const mensagem = await extrairMensagemErroFunction(error);
+      Alert.alert('Não foi possível gerar', mensagem);
+      return;
+    }
+
+    const criados = data?.criados ?? 0;
+    mostrarToast(
+      criados > 0
+        ? `${criados} flashcard${criados === 1 ? '' : 's'} gerado${criados === 1 ? '' : 's'} para ${disc.nome}`
+        : 'Nenhum flashcard foi gerado — tente reformular o assunto',
+      criados > 0 ? 'sucesso' : 'erro',
+    );
+    setAssuntoIA('');
+    carregarDados();
+  }
+
   function iniciarEstudo() {
     if (paraRevisarHoje.length === 0) return;
     setFila(paraRevisarHoje);
@@ -147,6 +224,17 @@ export default function FlashcardsScreen() {
     (c) => c.proxima_revisao && c.proxima_revisao <= hojeISO(),
   );
 
+  const disciplinaIANome = disciplinas.find((d) => d.id === disciplinaIASelecionada)?.nome;
+  const geradosHojeIA = disciplinaIANome
+    ? cartoes.filter(
+        (c) =>
+          c.disciplina_nome === disciplinaIANome &&
+          c.gerado_por_ia &&
+          c.created_at?.slice(0, 10) === hojeISO(),
+      ).length
+    : 0;
+  const restanteIA = Math.max(0, LIMITE_DIARIO_IA - geradosHojeIA);
+
   return (
     <View style={styles.flex}>
       <KeyboardAwareScrollView
@@ -156,73 +244,144 @@ export default function FlashcardsScreen() {
         keyboardDismissMode="on-drag"
         bottomOffset={20}
       >
-        {/* Cadastro */}
+        {/* Novo cartão — Manual ou Gerar com IA, num só card */}
         <Cartao>
           <View style={styles.cabecalhoCartao}>
             <Text style={[styles.tituloCartao, styles.tituloCartaoSemMargem]}>
               {editandoId ? 'Editar cartão' : 'Novo cartão'}
             </Text>
+            {!editandoId && modoCriacao === 'ia' && (
+              <Text style={styles.contadorAmbar}>
+                {restanteIA}/{LIMITE_DIARIO_IA}
+              </Text>
+            )}
             {editandoId && (
               <TouchableOpacity onPress={cancelarEdicao} hitSlop={8}>
                 <Text style={styles.acaoCancelar}>Cancelar</Text>
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.rotuloPequeno}>Disciplina</Text>
-          <View style={styles.linhaChips}>
-            {disciplinas.map((d) => (
-              <TouchableOpacity
-                key={d.id}
-                style={[styles.chip, disciplinaSelecionada === d.id && styles.chipAtivo]}
-                onPress={() => setDisciplinaSelecionada(d.id)}
-              >
-                <Text
-                  style={[
-                    styles.textoChip,
-                    disciplinaSelecionada === d.id && styles.textoChipAtivo,
-                  ]}
-                >
-                  {d.nome}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            {disciplinas.length === 0 && (
-              <Text style={styles.vazioChips}>Cadastre disciplinas na aba Cronograma.</Text>
-            )}
-          </View>
 
-          <CampoTexto
-            rotulo="Frente"
-            placeholder="Pergunta ou termo"
-            value={frente}
-            onChangeText={setFrente}
-            multiline
-            numberOfLines={2}
-            inputStyle={{ minHeight: 50, textAlignVertical: 'top' }}
-            returnKeyType="next"
-          />
-          <CampoTexto
-            rotulo="Verso"
-            placeholder="Resposta"
-            value={verso}
-            onChangeText={setVerso}
-            multiline
-            numberOfLines={2}
-            inputStyle={{ minHeight: 50, textAlignVertical: 'top' }}
-          />
+          {!editandoId && (
+            <SeletorPilulas
+              abas={ABAS_CRIACAO}
+              ativa={modoCriacao}
+              onSelecionar={setModoCriacao}
+              corIndicador="destaque"
+              corTextoAtivo="destaqueTexto"
+              style={styles.segmentado}
+            />
+          )}
 
-          <Botao
-            titulo={
-              carregando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Adicionar cartão'
-            }
-            onPress={salvarCartao}
-            disabled={carregando}
-          />
+          {editandoId || modoCriacao === 'manual' ? (
+            <>
+              <Text style={styles.rotuloPequeno}>Disciplina</Text>
+              <View style={styles.linhaChips}>
+                {disciplinas.map((d) => (
+                  <TouchableOpacity
+                    key={d.id}
+                    style={[styles.chip, disciplinaSelecionada === d.id && styles.chipAtivo]}
+                    onPress={() => setDisciplinaSelecionada(d.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.textoChip,
+                        disciplinaSelecionada === d.id && styles.textoChipAtivo,
+                      ]}
+                    >
+                      {d.nome}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {disciplinas.length === 0 && (
+                  <Text style={styles.vazioChips}>Cadastre disciplinas na aba Cronograma.</Text>
+                )}
+              </View>
+
+              <CampoTexto
+                rotulo="Frente"
+                placeholder="Pergunta ou termo"
+                value={frente}
+                onChangeText={setFrente}
+                multiline
+                numberOfLines={2}
+                inputStyle={{ minHeight: 50, textAlignVertical: 'top' }}
+                returnKeyType="next"
+              />
+              <CampoTexto
+                rotulo="Verso"
+                placeholder="Resposta"
+                value={verso}
+                onChangeText={setVerso}
+                multiline
+                numberOfLines={2}
+                inputStyle={{ minHeight: 50, textAlignVertical: 'top' }}
+              />
+
+              <Botao
+                titulo={
+                  carregando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Adicionar cartão'
+                }
+                onPress={salvarCartao}
+                disabled={carregando}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.rotuloPequeno}>Disciplina</Text>
+              <View style={styles.linhaChips}>
+                {disciplinas.map((d) => (
+                  <TouchableOpacity
+                    key={d.id}
+                    style={[styles.chip, disciplinaIASelecionada === d.id && styles.chipAtivo]}
+                    onPress={() => setDisciplinaIASelecionada(d.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.textoChip,
+                        disciplinaIASelecionada === d.id && styles.textoChipAtivo,
+                      ]}
+                    >
+                      {d.nome}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {disciplinas.length === 0 && (
+                  <Text style={styles.vazioChips}>Cadastre disciplinas na aba Cronograma.</Text>
+                )}
+              </View>
+
+              <CampoTexto
+                rotulo="Assunto"
+                placeholder="Ex.: Revolução Francesa, Verbos irregulares..."
+                value={assuntoIA}
+                onChangeText={setAssuntoIA}
+                returnKeyType="done"
+              />
+
+              <Text style={styles.textoResumoRevisao}>
+                {restanteIA > 0
+                  ? `Restam ${restanteIA} de ${LIMITE_DIARIO_IA} flashcards por IA hoje nessa disciplina.`
+                  : 'Limite diário de flashcards por IA atingido nessa disciplina hoje.'}
+              </Text>
+
+              <Botao
+                titulo={gerandoIA ? 'Gerando...' : 'Gerar com IA'}
+                onPress={gerarFlashcardsIA}
+                disabled={gerandoIA || restanteIA <= 0 || disciplinas.length === 0}
+              />
+            </>
+          )}
         </Cartao>
 
         {/* Para revisar hoje */}
         <Cartao>
-          <Text style={styles.tituloCartao}>Para revisar hoje</Text>
+          <View style={styles.linhaTituloCartao}>
+            <Text style={[styles.tituloCartao, styles.semMargem]}>Para revisar hoje</Text>
+            {paraRevisarHoje.length > 0 && (
+              <Text style={styles.contadorAmbar}>{paraRevisarHoje.length}</Text>
+            )}
+          </View>
           {paraRevisarHoje.length === 0 ? (
             <Text style={styles.vazio}>Nada pendente de revisão hoje.</Text>
           ) : (
@@ -243,7 +402,13 @@ export default function FlashcardsScreen() {
             <Text style={styles.vazio}>Nenhum cartão cadastrado ainda.</Text>
           )}
           {cartoes.map((item) => (
-            <View key={item.id} style={styles.itemAnotacao}>
+            <Animated.View
+              key={item.id}
+              style={styles.itemAnotacao}
+              entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
+              exiting={FadeOut.duration(160).reduceMotion(ReduceMotion.System)}
+              layout={LinearTransition.duration(200).reduceMotion(ReduceMotion.System)}
+            >
               <Text style={styles.metaAnotacao}>
                 {item.disciplina_nome || 'Sem disciplina'} · próxima revisão{' '}
                 {dataISOParaBR(item.proxima_revisao)}
@@ -257,7 +422,7 @@ export default function FlashcardsScreen() {
                   <Text style={styles.acaoExcluir}>Excluir</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
           ))}
         </Cartao>
       </KeyboardAwareScrollView>
@@ -284,6 +449,25 @@ function criarEstilos(cores) {
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
+    linhaTituloCartao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    semMargem: { marginBottom: 0 },
+    contadorAmbar: {
+      minWidth: 22,
+      textAlign: 'center',
+      overflow: 'hidden',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: cores.ambar,
+      color: cores.fundo,
+      fontSize: 12,
+      fontWeight: '700',
+    },
     rotuloPequeno: {
       fontSize: 11,
       color: cores.textoFraco,
@@ -303,6 +487,7 @@ function criarEstilos(cores) {
     textoChip: { fontSize: 13, color: cores.textoSecundario },
     textoChipAtivo: { color: cores.destaqueTexto, fontWeight: '700' },
     vazioChips: { fontSize: 12, color: cores.textoFraco },
+    segmentado: { marginBottom: 14 },
     vazio: { color: cores.textoFraco, textAlign: 'center', paddingVertical: 12 },
     itemAnotacao: {
       borderLeftWidth: 2,
