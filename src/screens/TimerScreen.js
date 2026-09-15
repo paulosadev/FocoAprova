@@ -90,7 +90,11 @@ export default function TimerScreen() {
     Vibration.vibrate([0, 400, 200, 400, 200, 400]);
     tocarAlerta();
 
-    const automatico = avancoAutomaticoRef.current;
+    // a pausa longa marca o fim de um ciclo completo (as N etapas de foco +
+    // pausa curta) — mesmo com o avanço automático ligado, para aqui e
+    // espera o usuário decidir se quer começar outro ciclo, em vez de
+    // engatar um foco novo sozinho
+    const automatico = avancoAutomaticoRef.current && modo !== 'pausaLonga';
     let proximoModo;
     let proximoSegundos;
 
@@ -104,6 +108,10 @@ export default function TimerScreen() {
         'Bloco de foco concluído',
         automatico ? 'Começando a pausa.' : 'Hora da pausa.',
       );
+    } else if (modo === 'pausaLonga') {
+      proximoModo = 'foco';
+      proximoSegundos = focoMin * 60;
+      notificar('Ciclo completo!', 'Pausa longa concluída. Toque em Iniciar quando quiser continuar.');
     } else {
       proximoModo = 'foco';
       proximoSegundos = focoMin * 60;
