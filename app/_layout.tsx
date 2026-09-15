@@ -67,13 +67,18 @@ function Conteudo() {
 
   // a Stack fica sempre montada (ver comentário abaixo), então sem isso, sair
   // da conta e logar de novo volta pra última tela visitada (ex: Configurações)
-  // em vez de Início — reseta a navegação sempre que uma sessão nova começa
+  // em vez de Início — reseta a navegação sempre que uma sessão nova começa.
+  // Só dispara depois que `pronto` vira true (Stack já montada) — navegar
+  // antes disso quebra o expo-router ("Attempted to navigate before mounting
+  // the Root Layout"), o que pode derrubar e reiniciar o app em loop, travando
+  // no splash pra sempre.
   const sessaoAnteriorRef = useRef(session);
   useEffect(() => {
+    if (!pronto) return;
     const acabouDeLogar = !sessaoAnteriorRef.current && !!session;
     sessaoAnteriorRef.current = session;
     if (acabouDeLogar) router.replace('/');
-  }, [session]);
+  }, [session, pronto]);
 
   if (!pronto) {
     return <SplashInicial />;
@@ -86,17 +91,20 @@ function Conteudo() {
     <View style={styles.flex}>
       <Stack screenOptions={{ headerShown: false }} />
       {!session && !naRedefinicaoDeSenha && (
-        <View style={StyleSheet.absoluteFill}>
+        // fundo opaco na camada de fora (nunca anima) — LoginScreen faz fade
+        // de entrada por dentro, e sem isso a tela de Início (sempre montada
+        // no Stack por baixo) fica visível por um instante durante o fade
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: cores.fundo }]}>
           <LoginScreen />
         </View>
       )}
       {precisaAceitarTermos && !naRedefinicaoDeSenha && (
-        <View style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: cores.fundo }]}>
           <AceitarTermosScreen />
         </View>
       )}
       {precisaObjetivo && !naRedefinicaoDeSenha && (
-        <View style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: cores.fundo }]}>
           <ObjetivoScreen />
         </View>
       )}
