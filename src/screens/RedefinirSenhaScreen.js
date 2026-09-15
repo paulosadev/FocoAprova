@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '../supabaseClient';
-import { extrairParametros } from '../lib/auth';
+import { extrairParametros, consumirUrlRecuperacaoPendente, aoReceberUrlRecuperacao } from '../lib/auth';
 import { mensagemErro } from '../lib/erros';
 import { useTema } from '../context/ThemeContext';
 import { fontes } from '../theme';
@@ -14,7 +13,6 @@ import Botao from '../components/Botao';
 export default function RedefinirSenhaScreen() {
   const { cores } = useTema();
   const styles = criarEstilos(cores);
-  const urlAtual = Linking.useURL();
 
   const [estado, setEstado] = useState('verificando'); // verificando | pronto | invalido
   const [senha, setSenha] = useState('');
@@ -25,13 +23,10 @@ export default function RedefinirSenhaScreen() {
   useEffect(() => {
     let cancelado = false;
 
-    async function preparar() {
-      const inicial = await Linking.getInitialURL();
-      const url = urlAtual || inicial;
+    async function processar(url) {
       const params = extrairParametros(url || '');
       const info = {
-        urlAtual: urlAtual ?? '(null)',
-        urlInicial: inicial ?? '(null)',
+        url: url ?? '(null)',
         chaves: Object.keys(params).join(', ') || '(nenhuma)',
         error: params.error ?? '',
         error_code: params.error_code ?? '',
@@ -61,11 +56,39 @@ export default function RedefinirSenhaScreen() {
       }
     }
 
-    preparar();
+    // a URL de recuperação é capturada em src/lib/auth.js desde a carga do
+    // módulo (bem antes desta tela montar) — ler Linking direto aqui perdia
+    // o evento sempre que o app já estava aberto em segundo plano, porque o
+    // expo-router consumia esse mesmo evento pra navegar pra esta tela antes
+    // do listener dela existir (era a causa do "link inválido ou expirou"
+    // aparecer com um link válido).
+    const pendente = consumirUrlRecuperacaoPendente();
+    if (pendente) {
+      processar(pendente);
+      return () => {
+        cancelado = true;
+      };
+    }
+
+    // ainda não chegou (ex: o app abriu direto nesta rota antes do módulo de
+    // auth processar o link) — espera a URL chegar, com um teto de segurança
+    // pra não ficar preso em "Verificando..." se nunca vier nenhuma
+    const remover = aoReceberUrlRecuperacao((url) => {
+      clearTimeout(teto);
+      remover();
+      processar(url);
+    });
+    const teto = setTimeout(() => {
+      remover();
+      processar(null);
+    }, 4000);
+
     return () => {
       cancelado = true;
+      remover();
+      clearTimeout(teto);
     };
-  }, [urlAtual]);
+  }, []);
 
   async function salvar() {
     if (senha.length < 8) {
@@ -115,13 +138,15 @@ export default function RedefinirSenhaScreen() {
                 <View style={styles.debugCaixa}>
                   <Text style={styles.debugTitulo}>debug do link</Text>
                   <Text style={styles.debugTexto} selectable>
-                    urlAtual: {debug.urlAtual}
-                    {'\n'}urlInicial: {debug.urlInicial}
+                    url: {debug.url}
                     {'\n'}params: {debug.chaves}
                     {'\n'}temTokens: {String(debug.temTokens)}
                     {'\n'}error: {debug.error || '(nenhum)'}
                     {'\n'}error_code: {debug.error_code || '(nenhum)'}
                     {'\n'}error_description: {debug.error_description || '(nenhum)'}
+                    {debug.sessaoExistente !== undefined
+                      ? `\nsessaoExistente: ${debug.sessaoExistente}`
+                      : ''}
                     {debug.setSessionError ? `\nsetSession: ${debug.setSessionError}` : ''}
                   </Text>
                 </View>

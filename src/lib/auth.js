@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../supabaseClient';
@@ -73,4 +74,41 @@ export async function enviarResetSenha(email) {
     redirectTo: redirectRedefinirSenha,
   });
   if (error) throw error;
+}
+
+// Captura o link de recuperação de senha aqui, na carga do módulo — bem
+// antes de qualquer tela montar. Se a RedefinirSenhaScreen tentasse ler a
+// URL sozinha (Linking.getInitialURL()/useURL()), perderia o evento sempre
+// que o app já estivesse aberto em segundo plano: o expo-router já consome
+// esse mesmo evento pra decidir navegar pra essa tela, e o listener da tela
+// só é registrado DEPOIS que a navegação e o mount acontecem — tarde demais
+// pra receber o mesmo evento (emissores de evento em JS não reenviam pro
+// passado). Esse módulo é importado bem no topo da árvore (app/_layout.tsx
+// -> LoginScreen -> auth.js), então roda antes do expo-router montar.
+let urlRecuperacaoPendente = null;
+const ouvintesRecuperacao = new Set();
+
+function registrarUrlRecuperacao(url) {
+  if (!url) return;
+  const params = extrairParametros(url);
+  if (!params.access_token && !params.refresh_token && !params.error) return;
+  urlRecuperacaoPendente = url;
+  ouvintesRecuperacao.forEach((callback) => callback(url));
+}
+
+Linking.getInitialURL().then(registrarUrlRecuperacao);
+Linking.addEventListener('url', ({ url }) => registrarUrlRecuperacao(url));
+
+// Consome (e limpa) a URL de recuperação pendente, se já tiver chegado.
+export function consumirUrlRecuperacaoPendente() {
+  const url = urlRecuperacaoPendente;
+  urlRecuperacaoPendente = null;
+  return url;
+}
+
+// Assina uma URL de recuperação que ainda não chegou (ex: a tela montou
+// antes do evento, ou o app abriu direto nela). Retorna a função pra cancelar.
+export function aoReceberUrlRecuperacao(callback) {
+  ouvintesRecuperacao.add(callback);
+  return () => ouvintesRecuperacao.delete(callback);
 }
