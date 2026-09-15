@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Vibration } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, Vibration } from 'react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -40,12 +40,27 @@ export default function TimerScreen() {
   const [rodando, setRodando] = useState(false);
   const [ciclosFeitos, setCiclosFeitos] = useState(0);
   const [telaCheia, setTelaCheia] = useState(false);
+  const [avancoAutomatico, setAvancoAutomatico] = useState(true);
 
   const intervaloRef = useRef(null);
   const rodandoRef = useRef(rodando);
+  // finalizarBloco roda dentro do callback do setInterval criado em iniciar(),
+  // que fecha sobre o valor de avancoAutomatico daquele render — sem a ref,
+  // ligar/desligar o interruptor durante uma etapa em andamento só valeria a
+  // partir da próxima vez que o timer for iniciado
+  const avancoAutomaticoRef = useRef(avancoAutomatico);
+  // deactivateKeepAwake quebra se chamado sem nunca ter ativado (ex: sair da
+  // aba sem apertar "Iniciar") — só desativa no cleanup se de fato ativou
+  const ativouKeepAwakeRef = useRef(false);
 
   useEffect(() => {
-    return () => deactivateKeepAwake(KEEP_AWAKE_TAG);
+    avancoAutomaticoRef.current = avancoAutomatico;
+  }, [avancoAutomatico]);
+
+  useEffect(() => {
+    return () => {
+      if (ativouKeepAwakeRef.current) deactivateKeepAwake(KEEP_AWAKE_TAG);
+    };
   }, []);
 
   useEffect(() => {
@@ -62,10 +77,7 @@ export default function TimerScreen() {
     setSegundos(duracoes[modo] * 60);
   }, [focoMin, pausaMin, pausaLongaMin, modo]);
 
-  function iniciar() {
-    setRodando(true);
-    setTelaCheia(true);
-    activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+  function iniciarIntervalo() {
     intervaloRef.current = setInterval(() => {
       setSegundos((atual) => {
         if (atual <= 1) {
@@ -77,10 +89,23 @@ export default function TimerScreen() {
     }, 1000);
   }
 
+  function iniciar() {
+    setRodando(true);
+    setTelaCheia(true);
+    activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+    ativouKeepAwakeRef.current = true;
+    iniciarIntervalo();
+  }
+
   function pausar() {
     setRodando(false);
     clearInterval(intervaloRef.current);
-    deactivateKeepAwake(KEEP_AWAKE_TAG);
+    // "Reiniciar" chama pausar() mesmo sem nunca ter apertado "Iniciar" —
+    // sem essa checagem quebra igual ao bug do cleanup (ver useEffect acima)
+    if (ativouKeepAwakeRef.current) {
+      deactivateKeepAwake(KEEP_AWAKE_TAG);
+      ativouKeepAwakeRef.current = false;
+    }
   }
 
   function reiniciar() {
@@ -94,22 +119,45 @@ export default function TimerScreen() {
     Vibration.vibrate([0, 400, 200, 400, 200, 400]);
     tocarAlerta();
     clearInterval(intervaloRef.current);
-    setRodando(false);
-    setTelaCheia(false);
-    deactivateKeepAwake(KEEP_AWAKE_TAG);
+
+    const automatico = avancoAutomaticoRef.current;
+    let proximoModo;
+    let proximoSegundos;
 
     if (modo === 'foco') {
       const novosCiclos = ciclosFeitos + 1;
       setCiclosFeitos(novosCiclos);
       registrarMinutos(focoMin, 'foco');
-      notificar('Bloco de foco concluído', 'Hora da pausa.');
-      const proximoModo = novosCiclos % ciclosParaPausaLonga === 0 ? 'pausaLonga' : 'pausa';
-      setModo(proximoModo);
-      setSegundos((proximoModo === 'pausaLonga' ? pausaLongaMin : pausaMin) * 60);
+      proximoModo = novosCiclos % ciclosParaPausaLonga === 0 ? 'pausaLonga' : 'pausa';
+      proximoSegundos = (proximoModo === 'pausaLonga' ? pausaLongaMin : pausaMin) * 60;
+      notificar(
+        'Bloco de foco concluído',
+        automatico ? 'Começando a pausa.' : 'Hora da pausa.',
+      );
     } else {
-      notificar('Pausa concluída', 'Hora de voltar ao foco.');
-      setModo('foco');
-      setSegundos(focoMin * 60);
+      proximoModo = 'foco';
+      proximoSegundos = focoMin * 60;
+      notificar(
+        'Pausa concluída',
+        automatico ? 'Voltando ao foco.' : 'Hora de voltar ao foco.',
+      );
+    }
+
+    setModo(proximoModo);
+    setSegundos(proximoSegundos);
+
+    // avanço automático: segue direto pra próxima etapa sem exigir toque em
+    // "Iniciar" — mantém rodando, tela cheia e o "manter tela acesa" como
+    // estavam. Senão, comportamento de sempre: para e espera o usuário.
+    if (automatico) {
+      iniciarIntervalo();
+    } else {
+      setRodando(false);
+      setTelaCheia(false);
+      if (ativouKeepAwakeRef.current) {
+        deactivateKeepAwake(KEEP_AWAKE_TAG);
+        ativouKeepAwakeRef.current = false;
+      }
     }
   }
 
@@ -166,6 +214,24 @@ export default function TimerScreen() {
         </Cartao>
 
         <Cartao>
+          <View style={styles.linhaItem}>
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemTitulo}>Avançar automaticamente</Text>
+              <Text style={styles.itemSub}>
+                Segue direto pra próxima etapa até a pausa longa, sem precisar tocar em Iniciar
+              </Text>
+            </View>
+            <Switch
+              value={avancoAutomatico}
+              onValueChange={setAvancoAutomatico}
+              trackColor={{ false: cores.borda, true: cores.destaque }}
+              thumbColor={cores.superficie}
+              ios_backgroundColor={cores.borda}
+            />
+          </View>
+        </Cartao>
+
+        <Cartao>
           <Text style={styles.tituloConfig}>Configurar tempos</Text>
           <SeletorDuracao rotulo="Foco" valorMinutos={focoMin} onAlterar={setFocoMin} />
           <SeletorDuracao rotulo="Pausa" valorMinutos={pausaMin} onAlterar={setPausaMin} />
@@ -215,6 +281,10 @@ function criarEstilos(cores) {
     ponto: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: cores.borda },
     pontoPreenchido: { backgroundColor: cores.ambar, borderColor: cores.ambar },
     controles: { flexDirection: 'row', gap: 10, width: '100%' },
+    linhaItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    itemInfo: { flex: 1 },
+    itemTitulo: { fontSize: 14, color: cores.texto },
+    itemSub: { fontSize: 11, color: cores.textoFraco, marginTop: 2 },
     tituloConfig: {
       fontSize: 12,
       color: cores.textoSecundario,
