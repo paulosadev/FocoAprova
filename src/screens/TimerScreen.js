@@ -42,12 +42,11 @@ export default function TimerScreen() {
   const [telaCheia, setTelaCheia] = useState(false);
   const [avancoAutomatico, setAvancoAutomatico] = useState(true);
 
-  const intervaloRef = useRef(null);
   const rodandoRef = useRef(rodando);
-  // finalizarBloco roda dentro do callback do setInterval criado em iniciar(),
-  // que fecha sobre o valor de avancoAutomatico daquele render — sem a ref,
-  // ligar/desligar o interruptor durante uma etapa em andamento só valeria a
-  // partir da próxima vez que o timer for iniciado
+  // finalizarBloco roda dentro do callback do setInterval abaixo, que fecha
+  // sobre o valor de avancoAutomatico do render em que foi criado — sem a
+  // ref, ligar/desligar o interruptor durante uma etapa em andamento só
+  // valeria a partir da próxima troca de etapa
   const avancoAutomaticoRef = useRef(avancoAutomatico);
   // deactivateKeepAwake quebra se chamado sem nunca ter ativado (ex: sair da
   // aba sem apertar "Iniciar") — só desativa no cleanup se de fato ativou
@@ -77,48 +76,19 @@ export default function TimerScreen() {
     setSegundos(duracoes[modo] * 60);
   }, [focoMin, pausaMin, pausaLongaMin, modo]);
 
-  function iniciarIntervalo() {
-    intervaloRef.current = setInterval(() => {
-      setSegundos((atual) => {
-        if (atual <= 1) {
-          finalizarBloco();
-          return 0;
-        }
-        return atual - 1;
-      });
-    }, 1000);
-  }
-
-  function iniciar() {
-    setRodando(true);
-    setTelaCheia(true);
-    activateKeepAwakeAsync(KEEP_AWAKE_TAG);
-    ativouKeepAwakeRef.current = true;
-    iniciarIntervalo();
-  }
-
-  function pausar() {
-    setRodando(false);
-    clearInterval(intervaloRef.current);
-    // "Reiniciar" chama pausar() mesmo sem nunca ter apertado "Iniciar" —
-    // sem essa checagem quebra igual ao bug do cleanup (ver useEffect acima)
-    if (ativouKeepAwakeRef.current) {
-      deactivateKeepAwake(KEEP_AWAKE_TAG);
-      ativouKeepAwakeRef.current = false;
-    }
-  }
-
-  function reiniciar() {
-    pausar();
-    setModo('foco');
-    setCiclosFeitos(0);
-    setSegundos(focoMin * 60);
+  async function registrarMinutos(minutos, tipo) {
+    if (!session) return;
+    await supabase.from('sessoes_estudo').insert({
+      user_id: session.user.id,
+      minutos,
+      tipo,
+      data: dataLocalISO(),
+    });
   }
 
   async function finalizarBloco() {
     Vibration.vibrate([0, 400, 200, 400, 200, 400]);
     tocarAlerta();
-    clearInterval(intervaloRef.current);
 
     const automatico = avancoAutomaticoRef.current;
     let proximoModo;
@@ -147,11 +117,11 @@ export default function TimerScreen() {
     setSegundos(proximoSegundos);
 
     // avanço automático: segue direto pra próxima etapa sem exigir toque em
-    // "Iniciar" — mantém rodando, tela cheia e o "manter tela acesa" como
-    // estavam. Senão, comportamento de sempre: para e espera o usuário.
-    if (automatico) {
-      iniciarIntervalo();
-    } else {
+    // "Iniciar" — só troca `modo`/`segundos` acima e deixa `rodando` como
+    // estava (true), que já é o suficiente pro useEffect abaixo recriar o
+    // interval sozinho, com valores atuais. Senão, comportamento de sempre:
+    // para e espera o usuário.
+    if (!automatico) {
       setRodando(false);
       setTelaCheia(false);
       if (ativouKeepAwakeRef.current) {
@@ -161,14 +131,53 @@ export default function TimerScreen() {
     }
   }
 
-  async function registrarMinutos(minutos, tipo) {
-    if (!session) return;
-    await supabase.from('sessoes_estudo').insert({
-      user_id: session.user.id,
-      minutos,
-      tipo,
-      data: dataLocalISO(),
-    });
+  // roda a contagem regressiva enquanto `rodando` for true. Depende também
+  // de `modo`: no avanço automático o timer nunca para entre etapas (só
+  // troca de foco pra pausa etc.), então sem `modo` nas deps esse efeito
+  // nunca recriaria o interval — e o finalizarBloco ficaria presa numa
+  // closure antiga, sempre vendo o `modo` de quando "Iniciar" foi apertado
+  // (era exatamente o bug de nunca sair da pausa curta: a etapa "foco"
+  // dessa closure velha nunca ficava sabendo que já tinha virado pausa).
+  // finalizarBloco não entra nas deps de propósito: é função solta (não
+  // memoizada), recriada a cada render, mas a closure certa (a do render em
+  // que `modo` mudou) já é garantida pela dependência em `modo` acima.
+  useEffect(() => {
+    if (!rodando) return;
+    const id = setInterval(() => {
+      setSegundos((atual) => {
+        if (atual <= 1) {
+          finalizarBloco();
+          return 0;
+        }
+        return atual - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rodando, modo]);
+
+  function iniciar() {
+    setRodando(true);
+    setTelaCheia(true);
+    activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+    ativouKeepAwakeRef.current = true;
+  }
+
+  function pausar() {
+    setRodando(false);
+    // "Reiniciar" chama pausar() mesmo sem nunca ter apertado "Iniciar" —
+    // sem essa checagem quebra igual ao bug do cleanup (ver useEffect acima)
+    if (ativouKeepAwakeRef.current) {
+      deactivateKeepAwake(KEEP_AWAKE_TAG);
+      ativouKeepAwakeRef.current = false;
+    }
+  }
+
+  function reiniciar() {
+    pausar();
+    setModo('foco');
+    setCiclosFeitos(0);
+    setSegundos(focoMin * 60);
   }
 
   const rotulo = modo === 'foco' ? 'Foco' : modo === 'pausa' ? 'Pausa curta' : 'Pausa longa';
