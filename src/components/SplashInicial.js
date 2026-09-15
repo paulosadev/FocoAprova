@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 // fixo (não segue o tema claro/escuro do usuário) — precisa bater com a cor
 // nativa da janela travada em app/_layout.tsx (SystemUI.setBackgroundColorAsync),
@@ -10,8 +10,14 @@ const COR_TEXTO = '#e4edf7';
 // (app/_layout.tsx), pra não depender de callback de animação que pode não
 // disparar em alguns aparelhos
 export default function SplashInicial() {
+  // largura/altura explícitas (reativas a rotação/resize) em vez de confiar
+  // em absoluteFillObject se esticar contra os Providers ancestrais — em
+  // alguns aparelhos isso resultava numa caixa do tamanho do conteúdo em vez
+  // da tela inteira, jogando logo+nome pro topo em vez de centralizar
+  const { width, height } = useWindowDimensions();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width, height }]}>
       <Image
         source={require('../../assets/logo/logo-mark-escuro.png')}
         style={styles.logo}
@@ -24,12 +30,9 @@ export default function SplashInicial() {
 
 const styles = StyleSheet.create({
   container: {
-    // absoluteFillObject sozinho já cobre 100% da janela e acompanha
-    // qualquer redimensionamento (ex: barra de tarefas de tablet Samsung
-    // mudando o tamanho da janela do app) — um width/height fixo capturado
-    // uma vez via Dimensions.get() fica desatualizado nesses casos e cortava
-    // o conteúdo centralizado (era a causa real do "A" cortado no splash)
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
     backgroundColor: COR_FUNDO,
     alignItems: 'center',
     justifyContent: 'center',
