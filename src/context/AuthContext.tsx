@@ -23,6 +23,11 @@ interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   carregando: boolean;
+  // conta quantas vezes um SIGNED_IN de verdade aconteceu (login novo, não
+  // TOKEN_REFRESHED/USER_UPDATED) — usado pra resetar a navegação só num
+  // login genuíno, sem reagir a uma sessão "piscando" durante a renovação
+  // automática do token (ex: numa sessão longa como o Timer rodando)
+  loginContagem: number;
   sair: () => Promise<void>;
   atualizarPerfil: (campos: Partial<Profile>) => Promise<{ error: any }>;
   recarregarPerfil: () => Promise<void>;
@@ -34,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [loginContagem, setLoginContagem] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -41,8 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCarregando(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((evento, novaSessao) => {
       setSession(novaSessao);
+      if (evento === 'SIGNED_IN') setLoginContagem((c) => c + 1);
     });
 
     return () => listener.subscription.unsubscribe();
@@ -88,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         carregando,
+        loginContagem,
         sair,
         atualizarPerfil,
         recarregarPerfil: buscarPerfil,

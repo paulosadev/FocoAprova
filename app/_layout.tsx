@@ -25,7 +25,7 @@ import { garantirPermissaoNotificacao } from '../src/lib/notificacoes';
 SystemUI.setBackgroundColorAsync('#0c131b');
 
 function Conteudo() {
-  const { session, profile, carregando } = useAuth();
+  const { session, profile, carregando, loginContagem } = useAuth();
   const { cores } = useTema();
   const styles = criarEstilos(cores);
   const pathname = usePathname();
@@ -67,18 +67,22 @@ function Conteudo() {
 
   // a Stack fica sempre montada (ver comentário abaixo), então sem isso, sair
   // da conta e logar de novo volta pra última tela visitada (ex: Configurações)
-  // em vez de Início — reseta a navegação sempre que uma sessão nova começa.
-  // Só dispara depois que `pronto` vira true (Stack já montada) — navegar
-  // antes disso quebra o expo-router ("Attempted to navigate before mounting
-  // the Root Layout"), o que pode derrubar e reiniciar o app em loop, travando
-  // no splash pra sempre.
-  const sessaoAnteriorRef = useRef(session);
+  // em vez de Início — reseta a navegação a cada login novo de verdade.
+  // Usa `loginContagem` (só incrementa no evento SIGNED_IN do Supabase) em vez
+  // de inferir pela sessão ficar/deixar de ser null: a sessão pode "piscar"
+  // durante a renovação automática do token numa sessão longa (ex: o Timer
+  // rodando por um tempo), o que já causou reset de navegação por engano no
+  // meio do uso. Só dispara depois que `pronto` vira true (Stack já montada)
+  // — navegar antes disso quebra o expo-router ("Attempted to navigate before
+  // mounting the Root Layout"), o que pode derrubar e reiniciar o app em
+  // loop, travando no splash pra sempre.
+  const loginContagemAnteriorRef = useRef(loginContagem);
   useEffect(() => {
     if (!pronto) return;
-    const acabouDeLogar = !sessaoAnteriorRef.current && !!session;
-    sessaoAnteriorRef.current = session;
+    const acabouDeLogar = loginContagem > loginContagemAnteriorRef.current;
+    loginContagemAnteriorRef.current = loginContagem;
     if (acabouDeLogar) router.replace('/');
-  }, [session, pronto]);
+  }, [loginContagem, pronto]);
 
   if (!pronto) {
     return <SplashInicial />;
